@@ -1,53 +1,52 @@
-
+/* ---------------------------
+   1. DESIGN TOKENS (Variables)
+   --------------------------- */
 :root {
-  --font-display: 'Syne', sans-serif;
-  --font-body: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-base: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
 
-  
-  --accent: #7f1d1d;
-  --accent-light: #991b1b;
-  --accent-dark: #601213;
+  /* PUP brand accent */
+  --accent: #880000;
+  --accent-light: #a40000;
+  --accent-dark: #630000;
 
-  
-  --bg-body: #f6f5f2;
+  /* Premium Neutral palette (Zinc/Slate inspired) */
+  --bg-body: #f9fafb;
   --bg-card: #ffffff;
-  --bg-ghost: #f0eeea;
-  --bg-hover: #e8e5e0;
-  --border-subtle: rgba(28, 25, 23, 0.06);
+  --bg-ghost: #f4f4f5;
+  --bg-hover: #e4e4e7;
+  --border-subtle: rgba(0, 0, 0, 0.06);
 
-  
-  --text-primary: #1c1917;
-  --text-secondary: #78716c;
-  --text-tertiary: #a8a29e;
-  --text-on-accent: #f6f5f2;
+  /* Text hierarchy */
+  --text-primary: #09090b;
+  --text-secondary: #71717a;
+  --text-tertiary: #a1a1aa;
+  --text-on-accent: #ffffff;
 
-  
-  --success: #15803d;
-  --error: #b91c1c;
-  --warning: #b45309;
+  /* Feedback colors */
+  --success: #10b981;
+  --error: #ef4444;
+  --warning: #f59e0b;
 
-  
+  /* Geometry - Soft Structuralism */
   --radius-sm: 12px;
   --radius-md: 20px;
   --radius-lg: 32px;
   --radius-xl: 40px;
 
-  
-  --shadow-sm: 0 1px 2px rgba(28, 25, 23, 0.04), 0 1px 3px rgba(28, 25, 23, 0.02);
-  --shadow-md: 0 4px 24px rgba(28, 25, 23, 0.05), 0 2px 8px rgba(28, 25, 23, 0.03);
-  --shadow-lg: 0 16px 48px rgba(28, 25, 23, 0.07), 0 4px 16px rgba(28, 25, 23, 0.04);
+  /* Shadows - Diffusion */
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.02), 0 1px 2px rgba(0, 0, 0, 0.01);
+  --shadow-md: 0 12px 24px -10px rgba(0, 0, 0, 0.04), 0 4px 8px rgba(0, 0, 0, 0.02);
+  --shadow-lg: 0 24px 48px -12px rgba(0, 0, 0, 0.06), 0 8px 16px rgba(0, 0, 0, 0.03);
 
-  
-  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
-  --transition-fast: 200ms var(--ease-spring);
-  --transition-base: 400ms var(--ease-spring);
-  --transition-slow: 600ms var(--ease-spring);
-
-  
-  --layout-content-max: 880px;
-  --layout-form-max: 680px;
+  /* Transitions - Spring Physics */
+  --transition-fast: 200ms cubic-bezier(0.32, 0.72, 0, 1);
+  --transition-base: 400ms cubic-bezier(0.32, 0.72, 0, 1);
+  --transition-slow: 600ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 
+/* ---------------------------
+   2. GLOBAL RESET
+   --------------------------- */
 *,
 *::before,
 *::after {
@@ -63,31 +62,23 @@ html {
 }
 
 body {
-  font-family: var(--font-body);
+  font-family: var(--font-base);
   background-color: var(--bg-body);
-  background-image: radial-gradient(var(--border-subtle) 1px, transparent 1px);
-  background-size: 20px 20px;
-  background-position: -10px -10px;
   color: var(--text-primary);
-  line-height: 1.55;
+  line-height: 1.6;
   min-height: 100dvh;
+  /* subtle pattern overlay for texture */
+  background-image: radial-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 
-.noise-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  pointer-events: none;
-  opacity: 0.035;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-  background-repeat: repeat;
-  background-size: 200px 200px;
-}
-
+/* ---------------------------
+   3. VIEW SYSTEM
+   --------------------------- */
 .view {
   display: none;
   min-height: 100dvh;
-  animation: viewEnter 450ms var(--ease-spring) forwards;
+  animation: viewEnter 600ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .view--active {
@@ -106,204 +97,182 @@ body {
   }
 }
 
-#view-landing.view--active {
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Landing Layout */
+/* ---------------------------
+   4. LANDING VIEW
+   --------------------------- */
 .landing-content {
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 24px 24px 60px;
+  padding: 48px 24px;
+  text-align: center;
+  position: relative;
+  z-index: 1;
 }
 
-.landing-bento {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 24px;
-  max-width: 1100px;
-  width: 100%;
+#view-landing {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--bg-body);
 }
 
-@media (max-width: 900px) {
-  .landing-bento {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  .bento-hero, .bento-roles {
-    grid-column: span 2 !important;
-  }
+#view-landing::before {
+  content: '';
+  position: absolute;
+  top: -10%;
+  left: -5%;
+  width: 50vw;
+  height: 50vw;
+  background: radial-gradient(circle, rgba(136, 0, 0, 0.06) 0%, transparent 60%);
+  border-radius: 50%;
+  z-index: 0;
+  pointer-events: none;
 }
 
-@media (max-width: 600px) {
-  .landing-bento {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-  
-  .bento-hero, .bento-roles {
-    grid-column: span 1 !important;
-  }
+#view-landing::after {
+  content: '';
+  position: absolute;
+  bottom: -15%;
+  right: -5%;
+  width: 60vw;
+  height: 60vw;
+  background: radial-gradient(circle, rgba(164, 0, 0, 0.04) 0%, transparent 60%);
+  border-radius: 50%;
+  z-index: 0;
+  pointer-events: none;
 }
 
-.bento-hero {
-  grid-column: span 4;
-  grid-row: span 2;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-xl);
-  padding: 48px;
+.brand-mark {
+  margin-bottom: 64px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: flex-start;
-  box-shadow: 
-    var(--shadow-lg),
-    inset 0 1px 1px rgba(255, 255, 255, 1);
+  align-items: center;
 }
 
 .brand-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 72px;
-  height: 72px;
-  background: var(--accent);
+  width: 96px;
+  height: 96px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
   color: var(--text-on-accent);
-  font-size: 32px;
-  border-radius: 20px;
-  margin-bottom: 24px;
-  box-shadow: 0 12px 24px -8px rgba(136, 0, 0, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.2);
+  font-size: 44px;
+  font-weight: 700;
+  border-radius: 32px;
+  margin-bottom: 32px;
+  box-shadow: 0 20px 40px -10px rgba(136, 0, 0, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.2);
+  transform: rotate(-3deg);
+  transition: transform var(--transition-base);
+}
+
+.brand-icon:hover {
+  transform: rotate(0deg) scale(1.05);
 }
 
 .brand-title {
-  font-size: 48px;
+  font-size: 56px;
   font-weight: 800;
-  letter-spacing: -0.04em;
-  color: var(--text-primary);
+  letter-spacing: -0.05em;
+  background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   margin-bottom: 12px;
-  line-height: 1.1;
 }
 
 .brand-subtitle {
-  font-size: 16px;
+  font-size: 18px;
   color: var(--text-secondary);
+  max-width: 400px;
+  margin: 0 auto;
   line-height: 1.6;
-  max-width: 100%;
 }
 
-.bento-roles {
-  grid-column: span 2;
-  grid-row: span 2;
+.role-cards {
   display: flex;
-  flex-direction: column;
-  gap: 24px;
+  flex-direction: row;
+  gap: 20px;
+  width: 100%;
+  max-width: 560px;
+  justify-content: center;
+}
+
+@media (max-width: 600px) {
+  .role-cards {
+    flex-direction: column;
+    align-items: center;
+  }
 }
 
 .role-card {
-  width: 100%;
   flex: 1;
-  background: transparent;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  text-align: left;
-  outline: none;
-  display: block;
-}
-
-.role-card-shell {
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  padding: 8px;
-  border-radius: var(--radius-xl);
-  border: 1px solid var(--border-subtle);
-  box-shadow: 
-    var(--shadow-sm),
-    inset 0 1px 1px rgba(255, 255, 255, 1);
-  transition: all var(--transition-base);
-  height: 100%;
-}
-
-.role-card-core {
-  background: var(--bg-card);
-  border-radius: calc(var(--radius-xl) - 6px);
-  padding: 32px;
-  border: 1px solid var(--border-subtle);
-  box-shadow: 
-    inset 0 1px 1px rgba(255, 255, 255, 1),
-    0 2px 8px rgba(0, 0, 0, 0.02);
-  transition: all var(--transition-base);
-  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  gap: 16px;
+  padding: 32px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  text-align: left;
+  box-shadow: var(--shadow-sm);
+  max-width: 280px;
+  width: 100%;
 }
 
-.role-card:hover .role-card-shell {
-  background: rgba(255, 255, 255, 0.9);
-  border-color: rgba(136, 0, 0, 0.15);
+.role-card:hover {
+  background: var(--bg-card);
+  border-color: rgba(136, 0, 0, 0.2);
   box-shadow: var(--shadow-md), 0 0 0 4px rgba(136, 0, 0, 0.05);
   transform: translateY(-4px);
 }
 
-.role-card:hover .role-card-core {
-  border-color: rgba(136, 0, 0, 0.1);
-  background: #ffffff;
-}
-
-.role-card:active .role-card-shell {
-  transform: scale(0.98);
+.role-card:active {
+  transform: scale(0.97);
 }
 
 .role-icon {
-  font-size: 28px;
+  font-size: 32px;
   color: var(--accent);
   line-height: 1;
   background: rgba(136, 0, 0, 0.05);
   padding: 12px;
   border-radius: var(--radius-md);
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .role-label {
-  display: block;
   font-size: 18px;
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: -0.02em;
-  margin-bottom: 4px;
 }
 
 .role-hint {
-  display: block;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text-secondary);
   line-height: 1.5;
 }
 
+/* ---------------------------
+   5. AUTHENTICATION VIEW
+   --------------------------- */
 .auth-wrap {
   max-width: 440px;
   width: 100%;
   margin: auto;
   padding: 40px 32px;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: var(--bg-card);
   border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
   border: 1px solid var(--border-subtle);
-  box-shadow: 
-    var(--shadow-lg),
-    inset 0 1px 1px rgba(255, 255, 255, 1),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.5);
 }
 
 .btn-back {
@@ -360,11 +329,9 @@ body {
   gap: 16px;
 }
 
-/* Builder: attempts + deadline share one row on wide screens */
-.builder-settings-row {
-  margin-bottom: 8px;
-}
-
+/* ---------------------------
+   6. FORM ELEMENTS
+   --------------------------- */
 .field-group {
   display: flex;
   flex-direction: column;
@@ -422,6 +389,9 @@ body {
   min-height: 20px;
 }
 
+/* ---------------------------
+   7. BUTTONS
+   --------------------------- */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -488,6 +458,9 @@ body {
   width: 100%;
 }
 
+/* ---------------------------
+   8. APP HEADER
+   --------------------------- */
 .app-header {
   display: flex;
   align-items: center;
@@ -499,24 +472,12 @@ body {
   border: 1px solid var(--border-subtle);
   border-radius: 24px;
   position: sticky;
-  top: 16px;
-  margin: 16px auto 32px;
-  max-width: var(--layout-content-max);
-  width: 100%;
+  top: 24px;
+  margin: 0 auto 32px;
+  max-width: 1200px;
+  width: calc(100% - 48px);
   z-index: 100;
   box-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.08);
-}
-
-/* Form-heavy views use a narrower main column; match the header to that width. */
-#view-quiz-builder .app-header,
-#view-quiz-taker .app-header,
-#view-results .app-header {
-  max-width: var(--layout-form-max);
-}
-
-#view-quiz-taker .app-header {
-  position: relative;
-  top: auto;
 }
 
 .header-brand {
@@ -562,16 +523,19 @@ body {
   border-radius: 20px;
 }
 
+/* ---------------------------
+   9. MAIN CONTENT AREA
+   --------------------------- */
 .app-main {
   flex: 1;
-  max-width: var(--layout-content-max);
+  max-width: 880px;
   width: 100%;
   margin: 0 auto;
   padding: 48px 24px 80px;
 }
 
 .app-main--form {
-  max-width: var(--layout-form-max);
+  max-width: 680px;
 }
 
 .user-welcome {
@@ -604,6 +568,9 @@ body {
   margin: 48px 0;
 }
 
+/* ---------------------------
+   10. STATS ROW
+   --------------------------- */
 .stats-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -612,16 +579,11 @@ body {
 }
 
 .stat-card {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: var(--bg-card);
   padding: 24px;
   border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
   border: 1px solid var(--border-subtle);
-  box-shadow: 
-    var(--shadow-sm),
-    inset 0 1px 1px rgba(255, 255, 255, 1),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.5);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -650,6 +612,9 @@ body {
   letter-spacing: 0.05em;
 }
 
+/* ---------------------------
+   11. LIST CONTAINERS
+   --------------------------- */
 .list-container {
   display: flex;
   flex-direction: column;
@@ -662,15 +627,10 @@ body {
   justify-content: space-between;
   gap: 20px;
   padding: 24px 28px;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: var(--bg-card);
   border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
   border: 1px solid var(--border-subtle);
-  box-shadow: 
-    var(--shadow-sm),
-    inset 0 1px 1px rgba(255, 255, 255, 1),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.5);
   transition: all var(--transition-fast);
 }
 
@@ -678,18 +638,6 @@ body {
   box-shadow: var(--shadow-md);
   transform: translateY(-2px);
   border-color: rgba(136, 0, 0, 0.1);
-}
-
-.list-item-badge {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 8px 12px;
-  background: var(--bg-ghost);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-subtle);
 }
 
 .list-item-info {
@@ -722,6 +670,9 @@ body {
   flex-shrink: 0;
 }
 
+/* ---------------------------
+   12. EMPTY STATE
+   --------------------------- */
 .empty-state {
   text-align: center;
   padding: 64px 24px;
@@ -742,17 +693,15 @@ body {
   color: var(--text-secondary);
 }
 
+/* ---------------------------
+   13. BUILDER (QUIZ CREATION)
+   --------------------------- */
 .builder-card {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: var(--bg-card);
   padding: 40px;
   border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
   border: 1px solid var(--border-subtle);
-  box-shadow: 
-    var(--shadow-md),
-    inset 0 1px 1px rgba(255, 255, 255, 1),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.5);
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -1044,17 +993,15 @@ body {
   padding-top: 16px;
 }
 
+/* ---------------------------
+   14. QUIZ TAKER
+   --------------------------- */
 .taker-card {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: var(--bg-card);
   padding: 40px;
   border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
   border: 1px solid var(--border-subtle);
-  box-shadow: 
-    var(--shadow-md),
-    inset 0 1px 1px rgba(255, 255, 255, 1),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.5);
   display: flex;
   flex-direction: column;
   gap: 32px;
@@ -1197,6 +1144,9 @@ body {
   padding-top: 16px;
 }
 
+/* ---------------------------
+   15. RESULTS VIEW
+   --------------------------- */
 .results-card {
   background: var(--bg-card);
   padding: 48px 40px;
@@ -1289,6 +1239,10 @@ body {
   font-weight: 700;
 }
 
+/* ---------------------------
+   15. RESULTS - BREAKDOWN CARDS
+   (Premium Soft Structuralism)
+   --------------------------- */
 .breakdown-list {
   display: flex;
   flex-direction: column;
@@ -1511,6 +1465,9 @@ body {
   font-weight: 500;
 }
 
+/* ---------------------------
+   16. ADMIN STATISTICS TABLE
+   --------------------------- */
 .stats-summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -1520,7 +1477,7 @@ body {
 
 .table-wrap {
   background: var(--bg-card);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-md);
   border: 1px solid var(--border-subtle);
   overflow: hidden;
@@ -1566,6 +1523,9 @@ body {
   background: rgba(136, 0, 0, 0.02);
 }
 
+/* ---------------------------
+   17. RESPONSIVE ADJUSTMENTS
+   --------------------------- */
 @media (max-width: 600px) {
   .app-main {
     padding: 24px 16px 48px;
@@ -1599,10 +1559,6 @@ body {
 
   .stats-row {
     grid-template-columns: repeat(2, 1fr);
-  }
-
-  .builder-settings-row {
-    grid-template-columns: 1fr;
   }
 
   .choice-grid {

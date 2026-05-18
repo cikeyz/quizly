@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quizly - Quiz Master</title>
+
+  
+  <link rel="icon" type="image/svg+xml"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%237f1d1d'/%3E%3Cpath d='M28 52 L42 66 L72 36' stroke='%23f6f5f2' stroke-width='10' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Syne:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
+
+  
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  
+  <div class="noise-overlay" aria-hidden="true"></div>
+
+  
+  <div id="app">
+
+    
+    <section id="view-landing" class="view view--active">
+      <div class="landing-content">
+        <div class="landing-bento">
+          
+          <div class="bento-hero">
+            <i class="ph ph-list-checks brand-icon"></i>
+            <h1 class="brand-title">Quizly</h1>
+            <p class="brand-subtitle">A premium platform to create, share, and take quizzes with seamless simplicity.</p>
+          </div>
+          
+          <div class="bento-roles">
+            <button class="role-card" data-role="user" type="button">
+              <div class="role-card-shell">
+                <div class="role-card-core">
+                  <i class="ph ph-student role-icon"></i>
+                  <span class="role-label">I'm a Student</span>
+                  <span class="role-hint">Take quizzes and view your scores</span>
+                </div>
+              </div>
+            </button>
+            <button class="role-card" data-role="admin" type="button">
+              <div class="role-card-shell">
+                <div class="role-card-core">
+                  <i class="ph ph-chalkboard-teacher role-icon"></i>
+                  <span class="role-label">I'm an Instructor</span>
+                  <span class="role-hint">Create quizzes and track results</span>
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    
+    <section id="view-auth" class="view">
+      <div class="auth-wrap">
+        <button class="btn-back" type="button" aria-label="Go back">&#8592; Back</button>
+        <h2 class="auth-title">Enter Class Code</h2>
+        <p class="auth-hint" id="auth-hint">Ask your instructor for the class code.</p>
+        <form id="auth-form" class="auth-form" novalidate>
+          <div class="field-group">
+            <label for="class-code" class="field-label">Class Code</label>
+            <input type="text" id="class-code" class="field-input" placeholder="e.g. 362026" autocomplete="off"
+              inputmode="numeric" required>
+            <span class="field-error" id="auth-error" aria-live="polite"></span>
+          </div>
+
+          
+          <div class="student-fields" id="student-fields" style="display:none;">
+            <div class="field-row">
+              <div class="field-group">
+                <label for="student-first" class="field-label">First Name</label>
+                <input type="text" id="student-first" class="field-input" placeholder="First name" autocomplete="off">
+              </div>
+              <div class="field-group">
+                <label for="student-last" class="field-label">Last Name</label>
+                <input type="text" id="student-last" class="field-input" placeholder="Last name" autocomplete="off">
+              </div>
+            </div>
+            <div class="field-group">
+              <label for="student-id" class="field-label">Student Number</label>
+              <input type="text" id="student-id" class="field-input" placeholder="" autocomplete="off">
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn--primary btn--full">Continue</button>
+        </form>
+      </div>
+    </section>
+
+    
+    <section id="view-admin-dashboard" class="view">
+      <header class="app-header">
+        <div class="header-brand">
+          <i class="ph ph-list-checks header-icon"></i>
+          <span class="header-title">Quizly</span>
+        </div>
+        <div class="header-actions">
+          <span class="header-role">Instructor</span>
+          <button class="btn btn--ghost btn--sm" id="admin-logout" type="button">Sign Out</button>
+        </div>
+      </header>
+      <main class="app-main">
+        <div class="dashboard-header">
+          <h2 class="dashboard-title">Your Quizzes</h2>
+          <button class="btn btn--primary" id="btn-create-quiz" type="button">+ New Quiz</button>
+        </div>
+        
+        <div class="stats-row" id="admin-stats-row">
+          <!-- Stats injected by JS -->
+        </div>
+        
+        <div class="list-container" id="admin-quiz-list">
+          <!-- Quiz list injected by JS -->
+        </div>
+        
+        <div class="empty-state" id="admin-empty" style="display:none;">
+          <p>No quizzes yet.</p>
+          <p class="empty-hint">Click "New Quiz" to create your first one.</p>
+        </div>
+      </main>
+    </section>
+
+    
+    <section id="view-quiz-builder" class="view">
+      <header class="app-header">
+        <div class="header-brand">
+          <i class="ph ph-list-checks header-icon"></i>
+          <span class="header-title">Quizly</span>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn--ghost btn--sm" id="builder-cancel" type="button">Cancel</button>
+        </div>
+      </header>
+      <main class="app-main app-main--form">
+        <div class="builder-card">
+          <h2 class="builder-title" id="builder-title-text">Create Quiz</h2>
+          
+          <div class="field-group">
+            <label for="quiz-title" class="field-label">Quiz Title</label>
+            <input type="text" id="quiz-title" class="field-input" placeholder="e.g. JavaScript Basics" required>
+          </div>
+          <div class="field-group">
+            <label for="quiz-desc" class="field-label">Description <span class="optional">(optional)</span></label>
+            <textarea id="quiz-desc" class="field-input field-input--area" rows="2"
+              placeholder="Briefly describe what this quiz covers."></textarea>
+          </div>
+          
+          <div class="field-row builder-settings-row">
+            <div class="field-group">
+              <label for="quiz-max-attempts" class="field-label">Max tries per student</label>
+              <input type="number" id="quiz-max-attempts" class="field-input" min="1" max="99" value="1" required>
+            </div>
+            <div class="field-group">
+              <label for="quiz-deadline" class="field-label">Deadline <span class="optional">(optional)</span></label>
+              <input type="datetime-local" id="quiz-deadline" class="field-input">
+            </div>
+          </div>
+          
+          <div class="questions-header">
+            <h3 class="questions-heading">Questions</h3>
+            <span class="questions-count" id="question-count">0 questions</span>
+          </div>
+          <div class="questions-list" id="questions-container">
+            <!-- Questions injected via document.createElement -->
+          </div>
+          <button class="btn btn--secondary btn--full" id="btn-add-question" type="button">+ Add Question</button>
+          <div class="builder-actions">
+            <button class="btn btn--primary btn--full" id="btn-save-quiz" type="button">Save Quiz</button>
+          </div>
+        </div>
+      </main>
+    </section>
+
+    
+    <section id="view-user-dashboard" class="view">
+      <header class="app-header">
+        <div class="header-brand">
+          <i class="ph ph-list-checks header-icon"></i>
+          <span class="header-title">Quizly</span>
+        </div>
+        <div class="header-actions">
+          <span class="header-role">Student</span>
+          <button class="btn btn--ghost btn--sm" id="user-logout" type="button">Sign Out</button>
+        </div>
+      </header>
+      <main class="app-main">
+        <p class="user-welcome" id="user-welcome" style="display:none;"></p>
+        <div class="dashboard-header">
+          <h2 class="dashboard-title">Available Quizzes</h2>
+        </div>
+        <div class="list-container" id="user-quiz-list">
+          <!-- Available quizzes injected by JS -->
+        </div>
+        <div class="empty-state" id="user-empty" style="display:none;">
+          <p>No quizzes available right now.</p>
+          <p class="empty-hint">Check back later or ask your instructor.</p>
+        </div>
+        <div class="section-divider"></div>
+        <div class="dashboard-header">
+          <h2 class="dashboard-title">Your Results</h2>
+        </div>
+        <div class="list-container" id="user-results-list">
+          <!-- Past results injected by JS -->
+        </div>
+        <div class="empty-state" id="user-results-empty" style="display:none;">
+          <p>You haven't taken any quizzes yet.</p>
+        </div>
+      </main>
+    </section>
+
+    
+    <section id="view-quiz-taker" class="view">
+      <header class="app-header">
+        <div class="header-brand">
+          <i class="ph ph-list-checks header-icon"></i>
+          <span class="header-title">Quizly</span>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn--ghost btn--sm" id="taker-exit" type="button">Exit</button>
+        </div>
+      </header>
+      <main class="app-main app-main--form">
+        <div class="taker-card">
+          <div class="taker-meta">
+            <h2 class="taker-title" id="taker-quiz-title">Quiz Title</h2>
+            <p class="taker-desc" id="taker-quiz-desc"></p>
+            
+            <div class="taker-progress">
+              <div class="progress-track">
+                <div class="progress-fill" id="taker-progress-fill" style="width:0%"></div>
+              </div>
+              <span class="progress-text" id="taker-progress-text">0 / 0</span>
+            </div>
+          </div>
+          <form id="quiz-form" class="quiz-form" novalidate>
+            <div id="taker-questions">
+              <!-- Questions injected by JS -->
+            </div>
+            <div class="taker-actions">
+              <button type="submit" class="btn btn--primary btn--full">Submit Quiz</button>
+            </div>
+          </form>
+        </div>
+      </main>
+    </section>
+
+    
+    <section id="view-results" class="view">
+      <header class="app-header">
+        <div class="header-brand">
+          <i class="ph ph-list-checks header-icon"></i>
+          <span class="header-title">Quizly</span>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn--ghost btn--sm" id="results-done" type="button">Done</button>
+        </div>
+      </header>
+      <main class="app-main app-main--form">
+        <div class="results-card">
+          <h2 class="results-title">Quiz Results</h2>
+          
+          <div class="score-ring">
+            <div class="score-value" id="result-score">0</div>
+            <div class="score-label">correct</div>
+          </div>
+          
+          <div class="result-stats" id="result-stats">
+            <!-- Stats injected by JS -->
+          </div>
+          <div class="breakdown-header">
+            <h3 class="breakdown-title">Question Breakdown</h3>
+          </div>
+          
+          <div class="breakdown-list" id="result-breakdown">
+            <!-- Breakdown items injected by JS -->
+          </div>
+        </div>
+      </main>
+    </section>
+
+    
+    <section id="view-admin-stats" class="view">
+      <header class="app-header">
+        <div class="header-brand">
+          <i class="ph ph-list-checks header-icon"></i>
+          <span class="header-title">Quizly</span>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn--ghost btn--sm" id="stats-back" type="button">Back</button>
+        </div>
+      </header>
+      <main class="app-main">
+        <div class="dashboard-header">
+          <h2 class="dashboard-title" id="stats-quiz-title">Statistics</h2>
+        </div>
+        
+        <div class="stats-summary" id="stats-summary">
+          <!-- Summary injected by JS -->
+        </div>
+        
+        <div class="table-wrap">
+          <table class="data-table" id="stats-table">
+            <thead>
+              <tr>
+                <th>Student Name</th>
+                <th>Student Number</th>
+                <th>Score</th>
+                <th>Errors</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="stats-table-body">
+              <!-- Rows injected by JS -->
+            </tbody>
+          </table>
+        </div>
+        <div class="empty-state" id="stats-empty" style="display:none;">
+          <p>No submissions yet for this quiz.</p>
+        </div>
+      </main>
+    </section>
+
+  </div>
+  <!-- end #app -->
+
+  
+  <script src="script.js"></script>
+</body>
+
+</html>

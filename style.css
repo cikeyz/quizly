@@ -1,94 +1,53 @@
-/* ---------------------------
-   1. DESIGN TOKENS (Variables)
 
-   Every color, radius, shadow, and timing value lives here so the
-   entire theme can be adjusted from one block. Change --accent and
-   every button, progress bar, and active border updates instantly.
-
-   Why a warm neutral palette instead of pure gray?
-   Pure grays (#888, #ccc) look sterile. Warm tones (--text-secondary
-   is #78716c, a brown-gray) make the interface feel tactile - like
-   paper or plaster - without adding color that competes with content.
-
-   Why spring physics for transitions?
-   Standard ease-in-out feels mechanical. A spring curve (cubic-bezier
-   with overshoot baked into the formula) makes interactions feel
-   responsive and physical. The 400ms base duration is long enough to
-   be visible but short enough to never feel sluggish.
-   --------------------------- */
 :root {
   --font-display: 'Syne', sans-serif;
   --font-body: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
 
-  /* Deep burgundy accent - refined, not bright. Chosen because pure
-     red (#ff0000) looks alarming; this reads as authoritative. */
+  
   --accent: #7f1d1d;
   --accent-light: #991b1b;
   --accent-dark: #601213;
 
-  /* Warm neutral palette. bg-body is off-white with a hint of warmth;
-     bg-card is pure white for maximum contrast on content surfaces. */
+  
   --bg-body: #f6f5f2;
   --bg-card: #ffffff;
   --bg-ghost: #f0eeea;
   --bg-hover: #e8e5e0;
   --border-subtle: rgba(28, 25, 23, 0.06);
 
-  /* Text hierarchy: only three stops. Primary = near-black for body
-     text. Secondary = warm gray for metadata. Tertiary = light gray
-     for placeholders and disabled text. */
+  
   --text-primary: #1c1917;
   --text-secondary: #78716c;
   --text-tertiary: #a8a29e;
   --text-on-accent: #f6f5f2;
 
-  /* Feedback colors: green for correct, red for errors, amber for
-     warnings. Standard traffic-light semantics - no need to innovate. */
+  
   --success: #15803d;
   --error: #b91c1c;
   --warning: #b45309;
 
-  /* Radius scale: four stops from 12px (small elements) to 40px
-     (large cards). Consistent rounding makes the UI feel cohesive. */
+  
   --radius-sm: 12px;
   --radius-md: 20px;
   --radius-lg: 32px;
   --radius-xl: 40px;
 
-  /* Shadows: multi-layered for depth. Each uses very low opacity
-     (<0.07) because stacked shadows read as depth without looking
-     muddy. Single heavy shadows look like floating paper. */
+  
   --shadow-sm: 0 1px 2px rgba(28, 25, 23, 0.04), 0 1px 3px rgba(28, 25, 23, 0.02);
   --shadow-md: 0 4px 24px rgba(28, 25, 23, 0.05), 0 2px 8px rgba(28, 25, 23, 0.03);
   --shadow-lg: 0 16px 48px rgba(28, 25, 23, 0.07), 0 4px 16px rgba(28, 25, 23, 0.04);
 
-  /* Spring physics: the cubic-bezier accelerates past the target
-     then settles - same principle as a physical spring. Feels more
-     responsive than ease-in-out at the same duration. */
+  
   --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
   --transition-fast: 200ms var(--ease-spring);
   --transition-base: 400ms var(--ease-spring);
   --transition-slow: 600ms var(--ease-spring);
 
-  /* Content widths: 880px for dashboards (room for stats + list),
-     680px for form-heavy views (narrower = easier to scan). */
+  
   --layout-content-max: 880px;
   --layout-form-max: 680px;
 }
 
-/* ---------------------------
-   2. GLOBAL RESET
-
-   We zero out margins and padding on everything, then set box-sizing
-   to border-box. Without border-box, adding padding to an element
-   increases its width - you set width:100% and padding:16px and the
-   element overflows. border-box makes padding eat into the width
-   instead, which is almost always what you want.
-
-   The body gets a subtle dot grid via radial-gradient. It's a 20px
-   repeating pattern of tiny dots at 6% opacity - visible enough to
-   break up flat color, invisible enough to not distract from content.
-   --------------------------- */
 *,
 *::before,
 *::after {
@@ -114,21 +73,6 @@ body {
   min-height: 100dvh;
 }
 
-/* ---------------------------
-   3. NOISE TEXTURE OVERLAY
-
-   An SVG filter that generates procedural noise (think: film grain)
-   at 3.5% opacity across the entire viewport. It's purely cosmetic -
-   remove it and the app still works perfectly - but it adds texture
-   that makes the flat background feel like paper rather than a screen.
-
-   Why SVG noise instead of a PNG?
-   SVG is resolution-independent. A PNG noise texture at retina
-   resolution would be ~200KB. This inline SVG is ~300 bytes.
-
-   pointer-events:none ensures the overlay never blocks clicks.
-   z-index:9999 keeps it above content but below any modals.
-   --------------------------- */
 .noise-overlay {
   position: fixed;
   inset: 0;
@@ -140,25 +84,6 @@ body {
   background-size: 200px 200px;
 }
 
-/* ---------------------------
-   4. VIEW SYSTEM
-
-   Every view starts hidden (display:none). Only the view with
-   .view--active gets display:flex. JS toggles this class when the
-   user navigates - showView('admin-dashboard') removes view--active
-   from all views, then adds it to #view-admin-dashboard.
-
-   Why display:none instead of visibility:hidden or opacity:0?
-   display:none removes the element from the layout flow entirely.
-   Hidden views don't take up space, don't receive clicks, and
-   don't contribute to scroll height. The other approaches leave
-   invisible elements in the document flow that can interfere with
-   scrolling and tab order.
-
-   The viewEnter animation runs every time a view becomes active.
-   It's a subtle fade-up (12px → 0, 0.99 → 1 scale) that masks
-   the instant display toggle and makes navigation feel smooth.
-   --------------------------- */
 .view {
   display: none;
   min-height: 100dvh;
@@ -181,12 +106,6 @@ body {
   }
 }
 
-/* ---------------------------
-   5. LANDING VIEW
-   ---------------------------
-   Only apply flex layout when this view is active. A bare #view-landing rule
-   used display: flex with ID specificity - that defeated .view { display: none }
-   and kept the landing in the scroll chain so users could scroll “back” to it. */
 #view-landing.view--active {
   position: relative;
   overflow: hidden;
@@ -371,14 +290,6 @@ body {
   line-height: 1.5;
 }
 
-/* ---------------------------
-   5a. AUTHENTICATION VIEW
-
-   A centered card (max-width:440px) with a glass-like translucent
-   background. The back button uses translateX(-4px) on hover instead
-   of a color change - movement cues are more noticeable than color
-   shifts, especially for users with reduced color perception.
-   --------------------------- */
 .auth-wrap {
   max-width: 440px;
   width: 100%;
@@ -454,19 +365,6 @@ body {
   margin-bottom: 8px;
 }
 
-/* ---------------------------
-   6. FORM ELEMENTS
-
-   Inputs use a layered focus ring: a 4px box-shadow spread at 10%
-   opacity. This is more accessible than a simple border-color change
-   because the glow is visible even to users with low contrast
-   sensitivity. The ring uses the accent color so it ties into the
-   rest of the UI.
-
-   The .field-input--area modifier exists for textareas - it sets a
-   minimum height and allows vertical resize only (horizontal resize
-   would break the card width).
-   --------------------------- */
 .field-group {
   display: flex;
   flex-direction: column;
@@ -524,21 +422,6 @@ body {
   min-height: 20px;
 }
 
-/* ---------------------------
-   7. BUTTONS
-
-   Three button tiers:
-   - Primary: filled burgundy, used for the main action on each screen.
-     The box-shadow contains accent-colored blur for a glow effect.
-   - Secondary: white card with subtle border, used for "Add Question"
-     and other secondary actions.
-   - Ghost: transparent with gray text, used for Cancel, Sign Out, etc.
-
-   All buttons use translateY(-2px) on hover (lifts up) and
-   scale(0.97) on active (presses down). This two-phase micro-
-   interaction mimics physical button behavior: you hover over it,
-   it rises to meet you; press it, it compresses.
-   --------------------------- */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -605,18 +488,6 @@ body {
   width: 100%;
 }
 
-/* ---------------------------
-   8. APP HEADER
-
-   Sticky header with glassmorphism (backdrop-filter:blur). It floats
-   16px from the top with rounded corners - not a full-width bar - so
-   it looks like a pill rather than browser chrome. The header uses
-   the same max-width as .app-main so it aligns with content below.
-
-   On the quiz taker view, the header is overridden to position:relative
-   because a sticky header can intercept click events on the first
-   radio buttons (a layout bug caught during testing).
-   --------------------------- */
 .app-header {
   display: flex;
   align-items: center;
@@ -643,8 +514,6 @@ body {
   max-width: var(--layout-form-max);
 }
 
-/* Quiz taker: sticky header could sit above the first choices after layout/scroll
-   and intercept pointer events (seen in browser automation: click hit header). */
 #view-quiz-taker .app-header {
   position: relative;
   top: auto;
@@ -693,18 +562,6 @@ body {
   border-radius: 20px;
 }
 
-/* ---------------------------
-   9. MAIN CONTENT AREA
-
-   Two width variants: app-main (880px, for dashboards with stats
-   rows and wide lists) and app-main--form (680px, for the builder,
-   taker, and results - narrower because forms are easier to scan
-   when lines don't stretch too long).
-
-   The bottom padding (80px) is intentionally tall - it gives the
-   page breathing room at the end so the last card doesn't hug the
-   browser chrome.
-   --------------------------- */
 .app-main {
   flex: 1;
   max-width: var(--layout-content-max);
@@ -747,17 +604,6 @@ body {
   margin: 48px 0;
 }
 
-/* ---------------------------
-   10. STATS ROW
-
-   A responsive grid of stat cards. auto-fit with minmax(160px, 1fr)
-   means cards are at minimum 160px wide but expand to fill available
-   space. On narrow screens they wrap to fewer columns automatically -
-   no media query needed.
-
-   Each card lifts on hover (translateY(-4px)). The stat value uses
-   the accent color to draw the eye to the number.
-   --------------------------- */
 .stats-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -804,17 +650,6 @@ body {
   letter-spacing: 0.05em;
 }
 
-/* ---------------------------
-   11. LIST CONTAINERS
-
-   Quiz and result lists use flexbox column with a 16px gap between
-   items. Each .list-item is a horizontal row (flex, justify-between)
-   with the quiz title/meta on the left and action buttons on the
-   right.
-
-   On hover, items lift slightly and the border gains a faint accent
-   tint - a subtle signal that the row is interactive.
-   --------------------------- */
 .list-container {
   display: flex;
   flex-direction: column;
@@ -887,14 +722,6 @@ body {
   flex-shrink: 0;
 }
 
-/* ---------------------------
-   12. EMPTY STATE
-
-   Shown when a list has zero items. Uses a dashed border to visually
-   communicate "something could go here" - a solid border would read
-   as a card with content. Centered text with a muted hint line
-   tells the user what action to take next.
-   --------------------------- */
 .empty-state {
   text-align: center;
   padding: 64px 24px;
@@ -915,21 +742,6 @@ body {
   color: var(--text-secondary);
 }
 
-/* ---------------------------
-   13. BUILDER (QUIZ CREATION)
-
-   The builder is a single tall card with form fields at the top and
-   a dynamic question list below. Each question is a collapsible card
-   (.question-card) with a header toggle and a body that appears
-   when .is-open is added.
-
-   Why display:none toggle instead of animating height?
-   Animating to height:auto requires JavaScript to measure the
-   element, set an explicit pixel height, then animate. It's fragile.
-   The class toggle approach is instant but reliable - the slideDown
-   animation on the body provides a visual transition without the
-   layout thrashing that height animation causes.
-   --------------------------- */
 .builder-card {
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(20px);
@@ -1232,21 +1044,6 @@ body {
   padding-top: 16px;
 }
 
-/* ---------------------------
-   14. QUIZ TAKER
-
-   The taker card shares the same glass-card styling as the builder
-   and auth views. Each question has a label, a choices area, and a
-   bottom border separator (except the last one).
-
-   The progress bar uses a simple width-percentage approach: the
-   .progress-fill div gets its width set inline by JS, and CSS
-   transition on width makes the fill animate smoothly.
-
-   Choice labels (.tq-choice) translate slightly right on hover -
-   a directional cue that suggests "select this." Selected choices
-   get an accent border and a tinted background.
-   --------------------------- */
 .taker-card {
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(20px);
@@ -1400,18 +1197,6 @@ body {
   padding-top: 16px;
 }
 
-/* ---------------------------
-   15. RESULTS VIEW
-
-   A centered card with the score ring as the hero element. The ring
-   is pure CSS - border-radius:50% on a square creates a circle, and
-   the 8px accent border gives it weight. The number inside is flex-
-   centered both vertically and horizontally.
-
-   The stat grid below the ring uses a 2×2 layout that stacks to a
-   single column on mobile. Each stat card is a simple filled rectangle
-   with the value in large text and the label in small uppercase.
-   --------------------------- */
 .results-card {
   background: var(--bg-card);
   padding: 48px 40px;
@@ -1504,20 +1289,6 @@ body {
   font-weight: 700;
 }
 
-/* ---------------------------
-   15. RESULTS - BREAKDOWN CARDS
-
-   Each breakdown item is a two-layer card (outer shell + inner core)
-   with a color-coded left border accent: green for correct answers,
-   red for wrong ones. The cards animate in with staggered delays -
-   each card starts 100ms after the previous one, creating a cascade
-   effect that draws the eye down the list.
-
-   The toggle arrow rotates 180deg when the card opens. The body
-   slides down via the same slideDown keyframe used in the builder.
-   Wrong answers get a red-tinted value box; correct answers get a
-   green one; explanations get a burgundy-tinted box.
-   --------------------------- */
 .breakdown-list {
   display: flex;
   flex-direction: column;
@@ -1740,17 +1511,6 @@ body {
   font-weight: 500;
 }
 
-/* ---------------------------
-   16. ADMIN STATISTICS TABLE
-
-   A semantic <table> for submission data. The wrapper (.table-wrap)
-   has overflow-x:auto so the table scrolls horizontally on narrow
-   screens instead of breaking the layout.
-
-   Rows have a hover highlight (2% accent tint) for readability when
-   scanning across columns. The header row uses uppercase labels with
-   a heavier bottom border to visually separate it from the data.
-   --------------------------- */
 .stats-summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -1806,23 +1566,6 @@ body {
   background: rgba(136, 0, 0, 0.02);
 }
 
-/* ---------------------------
-   17. RESPONSIVE ADJUSTMENTS
-
-   Single breakpoint at 600px. Below this:
-   - Padding shrinks (24px → 16px) to reclaim screen real estate.
-   - Dashboard headers stack vertically instead of side-by-side.
-   - List items stack vertically (info on top, actions below).
-   - Stats rows go from 4 columns to 2.
-   - The builder settings row (attempts + deadline) goes single-column.
-   - Choice grids (yes/no, true/false) go single-column.
-   - The score ring shrinks from 180px to 140px.
-
-   We intentionally only have ONE breakpoint. More breakpoints create
-   more edge cases to test. 600px covers the vast majority of phones
-   in portrait mode, and the layout still works reasonably on tablets
-   without special handling.
-   --------------------------- */
 @media (max-width: 600px) {
   .app-main {
     padding: 24px 16px 48px;

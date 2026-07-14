@@ -1,26 +1,4 @@
-/* --- 1. APP STATE & CONFIG ---
-   This is the single source of truth for the entire application.
-   Every piece of data that changes over time lives in App.state.
-   The DOM never holds authoritative data - it's always a reflection
-   of what's in this object. Render functions read from App.state
-   and write to the DOM. Event handlers modify App.state and then
-   call render functions to sync the DOM.
 
-   This pattern (centralized state → render) is how React, Vue, and
-   every modern framework works under the hood. We're doing it
-   manually here to understand the principle without abstractions.
-
-   Key state fields:
-   - role: 'user' | 'admin' | null. Drives which views are accessible.
-   - quizzes: the canonical quiz array, persisted to localStorage.
-   - submissions: every quiz attempt ever made, persisted.
-   - builderQuestions: a TEMPORARY working copy while editing/creating.
-     Not saved until the user clicks "Save Quiz".
-   - editingQuizId: if set, we're editing an existing quiz (not creating).
-
-   codes are hardcoded simulation credentials - in a real app these
-   would be checked against a server, but we haven't covered PHP/MySQL
-   yet (Module 5+). */
 const App = {
   state: {
     currentView: 'landing',
@@ -39,31 +17,6 @@ const App = {
     admin: '23133'
   }
 };
-
-/* --- 2. LOCAL STORAGE PERSISTENCE ---
-   Why localStorage instead of a database?
-   Modules 1-4 cover HTML, CSS, and JavaScript only. PHP and MySQL
-   come in later modules. localStorage lets us build a fully
-   functional app with data that survives page refreshes using only
-   the concepts taught so far. It's the right tool for the current
-   scope - not a shortcut, a deliberate constraint-aware choice.
-
-   The Storage module has four responsibilities:
-   1. load() - read from localStorage into App.state on startup.
-   2. save() - write App.state to localStorage after every change.
-   3. seed() - create a sample quiz if storage is empty (so the app
-      doesn't look broken on first visit).
-   4. Session persistence - remember the logged-in role across
-      refreshes so the user doesn't have to re-authenticate.
-
-   Error handling: if localStorage is corrupted or full, we silently
-   fall back to empty defaults. The app still works, just without
-   persistence. Better than crashing with an unreadable error.
-
-   Session logic detail: we only restore the session if the role is
-   'user' AND the student profile is still available. Otherwise a
-   student who clears their profile data would be stuck in a
-   half-authenticated state. */
 
 const Storage = {
   KEYS: {
@@ -134,31 +87,15 @@ const Storage = {
   }
 };
 
-/* --- 3. UTILITY FUNCTIONS ---
-   Small, pure-ish helper functions that are used throughout the app.
-   Each does exactly one thing, has no side effects (except escapeHtml
-   which creates a temp DOM element), and is named for what it returns. */
-
-/* Generates a collision-resistant unique ID. Combines the current
-   timestamp (base-36 encoded for compactness) with a random suffix.
-   Base-36 uses 0-9 and a-z - shorter than hex, URL-safe, and human-
-   readable enough for debugging. Two IDs generated in the same
-   millisecond still differ because of the random component. */
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
-/* Formats a Unix timestamp into a readable date string like
-   "May 11, 2026". Uses the browser's built-in Intl API (via
-   toLocaleDateString) so the format respects the user's locale
-   settings without us hardcoding date formats. */
 function formatDate(ts) {
   const d = new Date(ts);
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-/* Same as formatDate but includes the time (e.g., "May 11, 2026, 3:30 PM").
-   Used for deadline displays where the exact hour matters. */
 function formatDateTime(ts) {
   const d = new Date(ts);
   return d.toLocaleString('en-US', {
@@ -170,12 +107,6 @@ function formatDateTime(ts) {
   });
 }
 
-/* Converts a Unix millisecond timestamp into the format that
-   <input type="datetime-local"> expects: "YYYY-MM-DDTHH:MM".
-   This is needed because datetime-local inputs use a specific
-   string format that doesn't match any standard JS date output.
-   Returns empty string for null/invalid timestamps so the input
-   shows as empty rather than "Invalid Date". */
 function toDatetimeLocalValue(ms) {
   if (ms == null || !Number.isFinite(ms)) return '';
   const d = new Date(ms);
@@ -183,22 +114,12 @@ function toDatetimeLocalValue(ms) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-/* Safely converts any string to HTML entities. Creates a temporary
-   DOM element and sets its textContent - the browser handles all
-   escaping automatically. This prevents XSS if a quiz title or
-   question text contains <script> tags or HTML characters.
-
-   Why not use a regex? Regex-based HTML escaping is fragile - there
-   are edge cases with Unicode, null bytes, and browser-specific
-   parsing quirks. Letting the browser do it via textContent is both
-   simpler and more reliable. */
 function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
 }
 
-/* Normalize quiz objects loaded from older saved data (before maxAttempts / deadline). */
 function migrateQuizzes() {
   App.state.quizzes.forEach(q => {
     if (typeof q.maxAttempts !== 'number' || !Number.isFinite(q.maxAttempts) || q.maxAttempts < 1) {
@@ -249,7 +170,6 @@ function clearError(elId) {
   setError(elId, '');
 }
 
-/* Resume dashboard after refresh if a session was persisted (role + student profile for users). */
 function restoreInitialView() {
   if (App.state.role === 'admin') {
     renderAdminDashboard();
@@ -264,7 +184,6 @@ function restoreInitialView() {
   showView('landing');
 }
 
-/* Suggested format only (not a real ID). Shuffles each time the student auth step opens. */
 function setRandomStudentIdPlaceholder() {
   const sid = document.getElementById('student-id');
   if (!sid) return;
@@ -312,25 +231,6 @@ function generateSampleQuiz() {
     ]
   };
 }
-
-/* --- 5. NAVIGATION BINDINGS ---
-   All event listeners are registered here, inside DOMContentLoaded.
-   This guarantees the DOM is fully parsed before we try to select
-   elements. Keeping bindEvents() as a single function makes it easy
-   to audit every interaction the app responds to - no scattered
-   addEventListener calls to track down.
-
-   The startup sequence is:
-   1. Storage.load() - hydrate App.state from localStorage.
-   2. Storage.seed() - create sample quiz if storage is empty.
-   3. bindEvents() - wire up all click/submit handlers.
-   4. restoreInitialView() - if a session was persisted, jump to
-      the dashboard; otherwise show the landing page.
-
-   Why restoreInitialView after bindEvents?
-   Because renderAdminDashboard() and renderUserDashboard() need the
-   event listeners to be in place before they attach per-button
-   handlers (Edit, Stats, Delete, Take Quiz). */
 
 document.addEventListener('DOMContentLoaded', () => {
   Storage.load();
@@ -408,22 +308,6 @@ function bindEvents() {
   document.getElementById('stats-back').addEventListener('click', () => showView('admin-dashboard'));
 }
 
-/* --- 6. AUTHENTICATION ---
-   Simulated auth flow. The class code is checked against hardcoded
-   values (362026 for students, 23133 for instructors). Students
-   must also provide their name and student ID - these are stored in
-   App.state.studentProfile and used later for submission tracking
-   and personal result filtering.
-
-   Why is the student profile stored?
-   Without it, we can't tell which submissions belong to which
-   student. The studentId is the key that links submissions to a
-   specific person across sessions.
-
-   Why call Storage.save() after setting the profile?
-   If the user refreshes the page, we want to restore their session
-   without forcing them to re-enter everything. */
-
 function handleAuth(e) {
   e.preventDefault();
   const input = document.getElementById('class-code');
@@ -461,11 +345,6 @@ function handleAuth(e) {
   }
 }
 
-/* Resets all session state and returns to the landing page.
-   We null out every state field individually (rather than replacing
-   App.state with a fresh object) because other code holds references
-   to App.state and would continue reading stale data if we swapped
-   the object reference. */
 function logout() {
   App.state.role = null;
   App.state.editingQuizId = null;
@@ -476,23 +355,6 @@ function logout() {
   Storage.save();
   showView('landing');
 }
-
-/* --- 7. ADMIN DASHBOARD RENDERER ---
-   Builds the instructor's home screen. Three parts:
-   1. Stats row: total quizzes, total submissions, average score
-      across ALL quizzes (not per-quiz - that's in viewStats).
-   2. Quiz list: each quiz gets a row with title, question count,
-      attempt limit, submission count, deadline, and Edit/Stats/Delete.
-   3. Empty state fallback.
-
-   Why use innerHTML with template literals here instead of
-   document.createElement?
-   The activity requirement for document.createElement is specifically
-   for the QUIZ BUILDER (dynamic question cards). The dashboard list
-   is simpler - it's a flat list of read-only items. Using innerHTML
-   is less code for the same result. We still escape user input with
-   escapeHtml() and attach event listeners programmatically after
-   rendering instead of using inline onclick. */
 
 function renderAdminDashboard() {
   const listEl = document.getElementById('admin-quiz-list');
@@ -557,33 +419,6 @@ function renderAdminDashboard() {
   });
 }
 
-/* --- 8. QUIZ BUILDER (uses document.createElement) ---
-   This is the activity's core technical requirement. The builder
-   constructs every question card through the DOM API:
-   document.createElement, appendChild, addEventListener - no
-   innerHTML for the question cards themselves.
-
-   Architecture of the builder:
-   1. openBuilder(quizId?) - initializes the builder form. If quizId
-      is provided, we're editing an existing quiz (deep-copy its
-      questions into builderQuestions). Otherwise we're creating.
-   2. createQuestionCard(question, index) - builds a single question
-      card entirely through DOM API calls. This is the function to
-      study if you want to understand document.createElement.
-   3. refreshAnswerArea(container, question) - rebuilds the answer
-      input area based on question type. Called when the type
-      selector changes.
-   4. addBuilderQuestion() - pushes a blank question and re-renders.
-   5. saveQuiz() - validates all fields, deep-copies builderQuestions
-      into App.state.quizzes, persists to localStorage.
-
-   Why deep copy with JSON.parse(JSON.stringify())?
-   When editing, we don't want changes in the builder to affect the
-   saved quiz until the user clicks Save. A deep copy creates an
-   independent snapshot. If the user cancels, the original quiz is
-   untouched. JSON round-tripping works for our plain object data -
-   no dates, functions, or circular references to worry about. */
-
 function openBuilder(quizId) {
   App.state.editingQuizId = quizId || null;
   App.state.builderQuestions = [];
@@ -630,38 +465,6 @@ function renderBuilderQuestions() {
   });
 }
 
-/* --- createQuestionCard: THE document.createElement SHOWCASE ---
-   This function builds one collapsible question card entirely through
-   the DOM API. No innerHTML - every element is created, configured,
-   and appended individually. This is the function the activity
-   instructions are asking you to demonstrate.
-
-   Structure of a question card:
-   ┌─────────────────────────────────────┐
-   │ ┌─ question-header (button) ──────┐ │
-   │ │ [1] "Question text preview"  ▾  │ │  ← click toggles .is-open
-   │ └────────────────────────────────┘ │
-   │ ┌─ question-body (div) ───────────┐ │
-   │ │ Question text input             │ │
-   │ │ Answer type selector            │ │
-   │ │ Answer area (radio/text/etc.)   │ │  ← only visible when open
-   │ │ Explanation textarea            │ │
-   │ │ [Remove question] button        │ │
-   │ └────────────────────────────────┘ │
-   └─────────────────────────────────────┘
-
-   Why build it this way instead of a template string?
-   1. Event listeners can be attached immediately during creation -
-      no need to re-query the DOM after innerHTML.
-   2. No risk of HTML injection from user input - textContent and
-      value assignments are safe by default.
-   3. Easier to update individual pieces (like the preview text)
-      without re-rendering the entire card.
-   4. The activity explicitly requires document.createElement.
-
-   The header is a <button> (not a <div> with onclick) because
-   buttons are focusable, keyboard-activatable, and announce their
-   role to screen readers without ARIA. */
 function createQuestionCard(question, index) {
   const card = document.createElement('div');
   card.className = 'question-card';
@@ -831,11 +634,6 @@ function refreshAnswerArea(container, question) {
     buildTypewrittenAnswer(container, question);
   }
 }
-
-/* --- refreshAnswerArea helpers ------------------------------------------
-   Each question type gets its own builder function. Extracted from
-   refreshAnswerArea to keep the dispatch readable and each branch
-   independently testable. */
 
 function buildMultipleChoiceAnswer(container, question) {
   const optsLabel = document.createElement('label');
@@ -1146,27 +944,6 @@ function renderUserDashboard() {
   }
 }
 
-/* --- 10. QUIZ TAKER ---
-   Renders the quiz-taking interface. Each question is rendered as
-   either radio buttons (multiple choice / yes-no / true-false) or a
-   text input (typewritten). All inputs share a name attribute based
-   on the question ID (e.g., name="q-abc123") so getElementsByName
-   can collect all inputs for a single question during scoring.
-
-   The progress bar updates live: every change/input event on the
-   #taker-questions container bubbles up and triggers
-   trackTakerProgress(), which counts answered questions and sets
-   the progress bar width.
-
-   Guard checks: before rendering, we verify the student profile
-   exists, the deadline hasn't passed, and the student still has
-   attempts remaining. If any check fails, we bounce back to the
-   dashboard with an explanatory alert. */
-
-/* Builds a single radio-button choice label for the quiz taker.
-   Extracted because multiple-choice, yes-no, and true-false all
-   use identical radio button markup - the only difference is the
-   option text. */
 function buildTakerRadioChoice(container, questionId, optionText) {
   const row = document.createElement('label');
   row.className = 'tq-choice';
@@ -1267,27 +1044,6 @@ function trackTakerProgress() {
   updateTakerProgress(answered, quiz.questions.length);
 }
 
-/* --- 11. SCORING & RESULTS ---
-   handleQuizSubmit: the scoring engine. Iterates through every
-   question in the active quiz, collects the user's answer from the
-   DOM, compares it to the correct answer, builds an answers array
-   with per-question correctness, computes the total score, creates
-   a submission object, and persists everything.
-
-   Scoring rules by question type:
-   - multiple-choice / yes-no / true-false: exact string match.
-   - typewritten with caseSensitive: exact match.
-   - typewritten without caseSensitive: lowercase comparison.
-
-   Why lowercase instead of a more sophisticated comparison?
-   For this activity's scope, lowercase handles the most common case
-   (users typing "string" vs "String"). Regex-based fuzzy matching
-   or Levenshtein distance would add complexity without proportional
-   benefit for a classroom quiz tool.
-
-   After scoring, we push the submission, call Storage.save(), set
-   App.state.currentResult, and switch to the results view. */
-
 function handleQuizSubmit(e) {
   e.preventDefault();
   const quiz = App.state.quizzes.find(q => q.id === App.state.takingQuizId);
@@ -1361,14 +1117,6 @@ function handleQuizSubmit(e) {
   showView('results');
 }
 
-/* renderResults: Builds the post-submission score card. Three zones:
-   1. Score ring (big number + "correct" label).
-   2. Stats grid (Total, Errors, Accuracy%, Correct) - innerHTML
-      because these are simple text replacements.
-   3. Question breakdown - each item is a collapsible card built via
-      document.createElement, showing your answer vs the correct
-      answer plus the explanation. Color-coded: green for correct,
-      red for wrong. Cards animate in with staggered delays. */
 function renderResults() {
   const { quiz, submission } = App.state.currentResult;
   if (!quiz || !submission) return;
@@ -1464,23 +1212,6 @@ function renderResults() {
   });
 }
 
-/* --- 12. ADMIN STATISTICS ---
-   Per-quiz submission breakdown for instructors. Two functions:
-
-   viewStats(quizId): Renders summary stat cards (submissions,
-   average, highest, lowest) plus a table of every student's
-   attempt. The table includes a "Reset tries" button that deletes
-   that student's submissions for this quiz - useful when a student
-   needs a retake due to technical issues.
-
-   resetStudentQuizAttempts(quizId, studentId): Filters out all
-   submissions matching both the quiz and student, then re-renders.
-   Uses confirm() for a simple yes/no dialog - sufficient for a
-   classroom tool where the instructor is operating intentionally.
-
-   The stats view reuses the same .stat-card and .stats-row CSS
-   classes as the admin dashboard for visual consistency. */
-
 function resetStudentQuizAttempts(quizId, studentId) {
   const quiz = App.state.quizzes.find(q => q.id === quizId);
   const label = quiz ? `"${quiz.title}"` : 'this quiz';
@@ -1562,16 +1293,6 @@ function viewStats(quizId) {
 
   showView('admin-stats');
 }
-
-/* --- 13. QUIZ DELETION ---
-   Removes a quiz AND all its associated submissions from state
-   and localStorage. We delete submissions too because orphaned
-   submissions (pointing to a quiz that no longer exists) would
-   show "Unknown Quiz" in the user's results list and skew the
-   admin stats.
-
-   confirm() provides a basic undo guard. Not fancy, but effective
-   for a tool where the instructor is the only one deleting things. */
 
 function deleteQuiz(quizId) {
   const quiz = App.state.quizzes.find(q => q.id === quizId);

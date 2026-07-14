@@ -1,4 +1,6 @@
-
+/* --- 1. APP STATE & CONFIG ---
+   Central state object. Everything that can change lives here.
+   The DOM is just a reflection of this state. */
 const App = {
   state: {
     currentView: 'landing',
@@ -18,12 +20,18 @@ const App = {
   }
 };
 
+/* --- 2. LOCAL STORAGE PERSISTENCE ---
+   NOTE: The localStorage persistence pattern below was suggested by AI.
+   I adapted it to fit this quiz application's data model, chose the key
+   naming convention, and integrated it with the rest of the app logic.
+   localStorage lets quizzes and submissions survive page refreshes
+   without needing a backend (which we haven't covered yet in Module 4). */
+
 const Storage = {
   KEYS: {
     quizzes: 'wms_quizmaker_quizzes',
     submissions: 'wms_quizmaker_submissions',
-    profile: 'wms_quizmaker_profile',
-    session: 'wms_quizmaker_session'
+    profile: 'wms_quizmaker_profile'
   },
 
   load() {
@@ -31,33 +39,14 @@ const Storage = {
       const qRaw = localStorage.getItem(this.KEYS.quizzes);
       const sRaw = localStorage.getItem(this.KEYS.submissions);
       const pRaw = localStorage.getItem(this.KEYS.profile);
-      App.state.quizzes = qRaw ? JSON.parse(qRaw) : [];
-      App.state.submissions = sRaw ? JSON.parse(sRaw) : [];
-      App.state.studentProfile = pRaw ? JSON.parse(pRaw) : null;
-
-      let persistedRole = null;
-      const sessRaw = localStorage.getItem(this.KEYS.session);
-      if (sessRaw) {
-        try {
-          const sess = JSON.parse(sessRaw);
-          if (sess && (sess.role === 'admin' || sess.role === 'user')) {
-            persistedRole = sess.role;
-          }
-        } catch (err) {
-          localStorage.removeItem(this.KEYS.session);
-        }
-      }
-      if (persistedRole === 'user' && !App.state.studentProfile) {
-        localStorage.removeItem(this.KEYS.session);
-        persistedRole = null;
-      }
-      App.state.role = persistedRole;
-      migrateQuizzes();
+      if (qRaw) App.state.quizzes = JSON.parse(qRaw);
+      if (sRaw) App.state.submissions = JSON.parse(sRaw);
+      if (pRaw) App.state.studentProfile = JSON.parse(pRaw);
     } catch (e) {
+      console.error('Failed to load from localStorage:', e);
       App.state.quizzes = [];
       App.state.submissions = [];
       App.state.studentProfile = null;
-      App.state.role = null;
     }
   },
 
@@ -68,13 +57,8 @@ const Storage = {
       if (App.state.studentProfile) {
         localStorage.setItem(this.KEYS.profile, JSON.stringify(App.state.studentProfile));
       }
-      if (App.state.role === 'user' || App.state.role === 'admin') {
-        localStorage.setItem(this.KEYS.session, JSON.stringify({ role: App.state.role }));
-      } else {
-        localStorage.removeItem(this.KEYS.session);
-      }
     } catch (e) {
-      // Silently fail - localStorage may be full or disabled
+      console.error('Failed to save to localStorage:', e);
     }
   },
 
@@ -87,6 +71,8 @@ const Storage = {
   }
 };
 
+/* --- 3. UTILITY FUNCTIONS --- */
+
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
@@ -96,55 +82,10 @@ function formatDate(ts) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-function formatDateTime(ts) {
-  const d = new Date(ts);
-  return d.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit'
-  });
-}
-
-function toDatetimeLocalValue(ms) {
-  if (ms == null || !Number.isFinite(ms)) return '';
-  const d = new Date(ms);
-  const pad = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
 function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
-}
-
-function migrateQuizzes() {
-  App.state.quizzes.forEach(q => {
-    if (typeof q.maxAttempts !== 'number' || !Number.isFinite(q.maxAttempts) || q.maxAttempts < 1) {
-      q.maxAttempts = 1;
-    }
-    if (q.maxAttempts > 99) q.maxAttempts = 99;
-    if (q.deadlineAt != null && typeof q.deadlineAt !== 'number') {
-      q.deadlineAt = null;
-    }
-  });
-}
-
-function getAttemptCount(quizId, studentId) {
-  if (!studentId) return 0;
-  return App.state.submissions.filter(s => s.quizId === quizId && s.studentId === studentId).length;
-}
-
-function isPastDeadline(quiz) {
-  return quiz.deadlineAt != null && Number.isFinite(quiz.deadlineAt) && Date.now() > quiz.deadlineAt;
-}
-
-function studentCanTakeQuiz(quiz, studentId) {
-  if (!studentId) return false;
-  if (isPastDeadline(quiz)) return false;
-  return getAttemptCount(quiz.id, studentId) < quiz.maxAttempts;
 }
 
 function showView(viewId) {
@@ -170,29 +111,6 @@ function clearError(elId) {
   setError(elId, '');
 }
 
-function restoreInitialView() {
-  if (App.state.role === 'admin') {
-    renderAdminDashboard();
-    showView('admin-dashboard');
-    return;
-  }
-  if (App.state.role === 'user') {
-    renderUserDashboard();
-    showView('user-dashboard');
-    return;
-  }
-  showView('landing');
-}
-
-function setRandomStudentIdPlaceholder() {
-  const sid = document.getElementById('student-id');
-  if (!sid) return;
-  const year = 2020 + Math.floor(Math.random() * 7);
-  const seq = String(Math.floor(Math.random() * 90000) + 10000);
-  const tail = Math.floor(Math.random() * 10);
-  sid.placeholder = `e.g. ${year}-${seq}-MN-${tail}`;
-}
-
 /* --- 4. SAMPLE DATA GENERATOR --- */
 
 function generateSampleQuiz() {
@@ -201,8 +119,6 @@ function generateSampleQuiz() {
     title: 'JavaScript Basics',
     description: 'A quick review of variables, functions, and events from Module 4.',
     createdAt: Date.now(),
-    maxAttempts: 1,
-    deadlineAt: null,
     questions: [
       {
         id: generateId(),
@@ -232,11 +148,13 @@ function generateSampleQuiz() {
   };
 }
 
+/* --- 5. NAVIGATION BINDINGS --- */
+
 document.addEventListener('DOMContentLoaded', () => {
   Storage.load();
   Storage.seed();
   bindEvents();
-  restoreInitialView();
+  showView('landing');
 });
 
 function bindEvents() {
@@ -250,28 +168,20 @@ function bindEvents() {
       input.value = '';
       input.focus();
 
-      const hintEl = document.getElementById('auth-hint');
-      if (hintEl) {
-        hintEl.textContent =
-          App.state.role === 'admin'
-            ? 'Enter the instructor code issued to you. If you need access, contact your department or faculty coordinator.'
-            : 'Ask your instructor for the class code.';
-      }
-
       // Show student info fields only for the student role
       const studentFields = document.getElementById('student-fields');
       if (studentFields) {
         studentFields.style.display = App.state.role === 'user' ? 'flex' : 'none';
       }
 
-      const firstEl = document.getElementById('student-first');
-      const lastEl = document.getElementById('student-last');
-      const sidEl = document.getElementById('student-id');
-      if (firstEl) firstEl.value = '';
-      if (lastEl) lastEl.value = '';
-      if (sidEl) sidEl.value = '';
-      if (App.state.role === 'user') {
-        setRandomStudentIdPlaceholder();
+      // Pre-fill student fields if we have a saved profile
+      if (App.state.role === 'user' && App.state.studentProfile) {
+        const first = document.getElementById('student-first');
+        const last = document.getElementById('student-last');
+        const sid = document.getElementById('student-id');
+        if (first) first.value = App.state.studentProfile.firstName || '';
+        if (last) last.value = App.state.studentProfile.lastName || '';
+        if (sid) sid.value = App.state.studentProfile.studentId || '';
       }
     });
   });
@@ -285,10 +195,7 @@ function bindEvents() {
   document.getElementById('admin-logout').addEventListener('click', logout);
 
   // Builder
-  document.getElementById('builder-cancel').addEventListener('click', () => {
-    App.state.editingQuizId = null;
-    showView('admin-dashboard');
-  });
+  document.getElementById('builder-cancel').addEventListener('click', () => showView('admin-dashboard'));
   document.getElementById('btn-add-question').addEventListener('click', () => addBuilderQuestion());
   document.getElementById('btn-save-quiz').addEventListener('click', saveQuiz);
 
@@ -298,8 +205,6 @@ function bindEvents() {
   // Taker
   document.getElementById('taker-exit').addEventListener('click', () => showView('user-dashboard'));
   document.getElementById('quiz-form').addEventListener('submit', handleQuizSubmit);
-  document.getElementById('taker-questions').addEventListener('change', trackTakerProgress);
-  document.getElementById('taker-questions').addEventListener('input', trackTakerProgress);
 
   // Results
   document.getElementById('results-done').addEventListener('click', () => showView('user-dashboard'));
@@ -307,6 +212,8 @@ function bindEvents() {
   // Admin stats
   document.getElementById('stats-back').addEventListener('click', () => showView('admin-dashboard'));
 }
+
+/* --- 6. AUTHENTICATION --- */
 
 function handleAuth(e) {
   e.preventDefault();
@@ -336,7 +243,6 @@ function handleAuth(e) {
 
   clearError('auth-error');
   if (App.state.role === 'admin') {
-    Storage.save();
     renderAdminDashboard();
     showView('admin-dashboard');
   } else {
@@ -351,18 +257,20 @@ function logout() {
   App.state.takingQuizId = null;
   App.state.currentResult = null;
   App.state.builderQuestions = [];
+  // Keep studentProfile in localStorage so it auto-fills next time,
+  // but clear it from active state.
   App.state.studentProfile = null;
-  Storage.save();
   showView('landing');
 }
+
+/* --- 7. ADMIN DASHBOARD RENDERER --- */
 
 function renderAdminDashboard() {
   const listEl = document.getElementById('admin-quiz-list');
   const emptyEl = document.getElementById('admin-empty');
   const statsRow = document.getElementById('admin-stats-row');
 
-  // Compute aggregate stats. reduce() walks through every submission
-  // and accumulates the total score, then we divide by count.
+  // Compute aggregate stats
   const totalQuizzes = App.state.quizzes.length;
   const totalSubmissions = App.state.submissions.length;
   const avgScore = totalSubmissions > 0
@@ -376,7 +284,6 @@ function renderAdminDashboard() {
   `;
 
   if (App.state.quizzes.length === 0) {
-    listEl.innerHTML = '';
     listEl.style.display = 'none';
     emptyEl.style.display = 'block';
     return;
@@ -387,19 +294,13 @@ function renderAdminDashboard() {
 
   listEl.innerHTML = App.state.quizzes.map(quiz => {
     const subs = App.state.submissions.filter(s => s.quizId === quiz.id);
-    const maxA = quiz.maxAttempts != null ? quiz.maxAttempts : 1;
-    const dueMeta =
-      quiz.deadlineAt != null && Number.isFinite(quiz.deadlineAt)
-        ? ` · Due ${formatDateTime(quiz.deadlineAt)}`
-        : '';
     return `
       <div class="list-item">
         <div class="list-item-info">
           <div class="list-item-title">${escapeHtml(quiz.title)}</div>
-          <div class="list-item-meta">${quiz.questions.length} questions · max ${maxA} tr${maxA === 1 ? 'y' : 'ies'} · ${subs.length} submission${subs.length !== 1 ? 's' : ''}${dueMeta}</div>
+          <div class="list-item-meta">${quiz.questions.length} questions &middot; ${subs.length} submission${subs.length !== 1 ? 's' : ''}</div>
         </div>
         <div class="list-item-actions">
-          <button class="btn btn--ghost btn--sm" data-action="edit" data-quiz-id="${quiz.id}" type="button">Edit</button>
           <button class="btn btn--ghost btn--sm" data-action="stats" data-quiz-id="${quiz.id}" type="button">Stats</button>
           <button class="btn btn--ghost btn--sm" data-action="delete" data-quiz-id="${quiz.id}" type="button">Delete</button>
         </div>
@@ -408,9 +309,6 @@ function renderAdminDashboard() {
   }).join('');
 
   // Attach event listeners instead of inline onclick to avoid global scope issues
-  listEl.querySelectorAll('button[data-action="edit"]').forEach(btn => {
-    btn.addEventListener('click', () => openBuilder(btn.dataset.quizId));
-  });
   listEl.querySelectorAll('button[data-action="stats"]').forEach(btn => {
     btn.addEventListener('click', () => viewStats(btn.dataset.quizId));
   });
@@ -419,14 +317,14 @@ function renderAdminDashboard() {
   });
 }
 
+/* --- 8. QUIZ BUILDER (uses document.createElement) --- */
+
 function openBuilder(quizId) {
   App.state.editingQuizId = quizId || null;
   App.state.builderQuestions = [];
 
   const titleEl = document.getElementById('quiz-title');
   const descEl = document.getElementById('quiz-desc');
-  const maxEl = document.getElementById('quiz-max-attempts');
-  const deadlineEl = document.getElementById('quiz-deadline');
   const builderTitle = document.getElementById('builder-title-text');
 
   if (quizId) {
@@ -435,8 +333,6 @@ function openBuilder(quizId) {
       builderTitle.textContent = 'Edit Quiz';
       titleEl.value = quiz.title;
       descEl.value = quiz.description || '';
-      if (maxEl) maxEl.value = String(quiz.maxAttempts != null ? quiz.maxAttempts : 1);
-      if (deadlineEl) deadlineEl.value = toDatetimeLocalValue(quiz.deadlineAt);
       // Deep copy questions so we don't mutate until save
       App.state.builderQuestions = JSON.parse(JSON.stringify(quiz.questions));
     }
@@ -444,8 +340,6 @@ function openBuilder(quizId) {
     builderTitle.textContent = 'Create Quiz';
     titleEl.value = '';
     descEl.value = '';
-    if (maxEl) maxEl.value = '1';
-    if (deadlineEl) deadlineEl.value = '';
   }
 
   renderBuilderQuestions();
@@ -465,6 +359,9 @@ function renderBuilderQuestions() {
   });
 }
 
+/* This is where document.createElement is used per the activity requirement.
+   Every question card in the builder is built entirely through DOM API calls
+   instead of innerHTML, giving us full programmatic control over each node. */
 function createQuestionCard(question, index) {
   const card = document.createElement('div');
   card.className = 'question-card';
@@ -627,131 +524,123 @@ function refreshAnswerArea(container, question) {
   container.innerHTML = '';
 
   if (question.type === 'multiple-choice') {
-    buildMultipleChoiceAnswer(container, question);
+    const optsLabel = document.createElement('label');
+    optsLabel.className = 'field-label';
+    optsLabel.textContent = 'Options (select the correct one)';
+    container.appendChild(optsLabel);
+
+    const optsList = document.createElement('div');
+    optsList.className = 'options-list';
+
+    const options = question.options || ['', ''];
+    if (!question.options) question.options = options;
+
+    options.forEach((opt, i) => {
+      const row = document.createElement('div');
+      row.className = 'option-row';
+
+      const radio = document.createElement('input');
+      radio.type = 'radio';
+      radio.name = 'correct-' + question.id;
+      radio.className = 'option-radio';
+      radio.checked = question.correctAnswer === opt && opt !== '';
+      radio.addEventListener('change', () => {
+        // Read the live input value so empty placeholders don't get saved as the answer
+        if (radio.checked) question.correctAnswer = input.value;
+      });
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'field-input option-input';
+      input.placeholder = `Option ${i + 1}`;
+      input.value = opt;
+      input.addEventListener('input', () => {
+        question.options[i] = input.value;
+        if (radio.checked) question.correctAnswer = input.value;
+      });
+
+      row.appendChild(radio);
+      row.appendChild(input);
+      optsList.appendChild(row);
+    });
+
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'btn-add-option';
+    addBtn.textContent = '+ Add option';
+    addBtn.addEventListener('click', () => {
+      question.options.push('');
+      refreshAnswerArea(container, question);
+    });
+
+    container.appendChild(optsList);
+    container.appendChild(addBtn);
+
   } else if (question.type === 'yes-no' || question.type === 'true-false') {
-    buildYesNoTrueFalseAnswer(container, question);
+    const choices = question.type === 'yes-no' ? ['Yes', 'No'] : ['True', 'False'];
+    question.options = choices;
+
+    const grid = document.createElement('div');
+    grid.className = 'choice-grid';
+
+    choices.forEach(choice => {
+      const label = document.createElement('label');
+      label.className = 'choice-label';
+      if (question.correctAnswer === choice) label.classList.add('is-selected');
+
+      const radio = document.createElement('input');
+      radio.type = 'radio';
+      radio.name = 'correct-' + question.id;
+      radio.value = choice;
+      radio.checked = question.correctAnswer === choice;
+      radio.addEventListener('change', () => {
+        question.correctAnswer = choice;
+        // Refresh selection visuals
+        Array.from(grid.children).forEach(lbl => lbl.classList.remove('is-selected'));
+        label.classList.add('is-selected');
+      });
+
+      label.appendChild(radio);
+      label.appendChild(document.createTextNode(choice));
+      grid.appendChild(label);
+    });
+
+    container.appendChild(grid);
+
   } else if (question.type === 'typewritten') {
-    buildTypewrittenAnswer(container, question);
+    const ansGroup = document.createElement('div');
+    ansGroup.className = 'field-group';
+    const ansLabel = document.createElement('label');
+    ansLabel.className = 'field-label';
+    ansLabel.textContent = 'Correct Answer';
+    const ansInput = document.createElement('input');
+    ansInput.type = 'text';
+    ansInput.className = 'field-input';
+    ansInput.placeholder = 'Enter the exact correct answer';
+    ansInput.value = question.correctAnswer || '';
+    ansInput.addEventListener('input', () => {
+      question.correctAnswer = ansInput.value;
+    });
+    ansGroup.appendChild(ansLabel);
+    ansGroup.appendChild(ansInput);
+
+    const toggleRow = document.createElement('label');
+    toggleRow.className = 'toggle-row';
+    const toggle = document.createElement('input');
+    toggle.type = 'checkbox';
+    toggle.className = 'toggle-switch';
+    toggle.checked = !!question.caseSensitive;
+    toggle.addEventListener('change', () => {
+      question.caseSensitive = toggle.checked;
+    });
+    const toggleText = document.createElement('span');
+    toggleText.textContent = 'Case-sensitive checking';
+    toggleRow.appendChild(toggle);
+    toggleRow.appendChild(toggleText);
+
+    container.appendChild(ansGroup);
+    container.appendChild(toggleRow);
   }
-}
-
-function buildMultipleChoiceAnswer(container, question) {
-  const optsLabel = document.createElement('label');
-  optsLabel.className = 'field-label';
-  optsLabel.textContent = 'Options (select the correct one)';
-  container.appendChild(optsLabel);
-
-  const optsList = document.createElement('div');
-  optsList.className = 'options-list';
-
-  const options = question.options || ['', ''];
-  if (!question.options) question.options = options;
-
-  options.forEach((opt, i) => {
-    const row = document.createElement('div');
-    row.className = 'option-row';
-
-    const radio = document.createElement('input');
-    radio.type = 'radio';
-    radio.name = 'correct-' + question.id;
-    radio.className = 'option-radio';
-    radio.checked = question.correctAnswer === opt && opt !== '';
-    radio.addEventListener('change', () => {
-      if (radio.checked) question.correctAnswer = input.value;
-    });
-
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.className = 'field-input option-input';
-    input.placeholder = `Option ${i + 1}`;
-    input.value = opt;
-    input.addEventListener('input', () => {
-      question.options[i] = input.value;
-      if (radio.checked) question.correctAnswer = input.value;
-    });
-
-    row.appendChild(radio);
-    row.appendChild(input);
-    optsList.appendChild(row);
-  });
-
-  const addBtn = document.createElement('button');
-  addBtn.type = 'button';
-  addBtn.className = 'btn-add-option';
-  addBtn.textContent = '+ Add option';
-  addBtn.addEventListener('click', () => {
-    question.options.push('');
-    refreshAnswerArea(container, question);
-  });
-
-  container.appendChild(optsList);
-  container.appendChild(addBtn);
-}
-
-function buildYesNoTrueFalseAnswer(container, question) {
-  const choices = question.type === 'yes-no' ? ['Yes', 'No'] : ['True', 'False'];
-  question.options = choices;
-
-  const grid = document.createElement('div');
-  grid.className = 'choice-grid';
-
-  choices.forEach(choice => {
-    const label = document.createElement('label');
-    label.className = 'choice-label';
-    if (question.correctAnswer === choice) label.classList.add('is-selected');
-
-    const radio = document.createElement('input');
-    radio.type = 'radio';
-    radio.name = 'correct-' + question.id;
-    radio.value = choice;
-    radio.checked = question.correctAnswer === choice;
-    radio.addEventListener('change', () => {
-      question.correctAnswer = choice;
-      Array.from(grid.children).forEach(lbl => lbl.classList.remove('is-selected'));
-      label.classList.add('is-selected');
-    });
-
-    label.appendChild(radio);
-    label.appendChild(document.createTextNode(choice));
-    grid.appendChild(label);
-  });
-
-  container.appendChild(grid);
-}
-
-function buildTypewrittenAnswer(container, question) {
-  const ansGroup = document.createElement('div');
-  ansGroup.className = 'field-group';
-  const ansLabel = document.createElement('label');
-  ansLabel.className = 'field-label';
-  ansLabel.textContent = 'Correct Answer';
-  const ansInput = document.createElement('input');
-  ansInput.type = 'text';
-  ansInput.className = 'field-input';
-  ansInput.placeholder = 'Enter the exact correct answer';
-  ansInput.value = question.correctAnswer || '';
-  ansInput.addEventListener('input', () => {
-    question.correctAnswer = ansInput.value;
-  });
-  ansGroup.appendChild(ansLabel);
-  ansGroup.appendChild(ansInput);
-
-  const toggleRow = document.createElement('label');
-  toggleRow.className = 'toggle-row';
-  const toggle = document.createElement('input');
-  toggle.type = 'checkbox';
-  toggle.className = 'toggle-switch';
-  toggle.checked = !!question.caseSensitive;
-  toggle.addEventListener('change', () => {
-    question.caseSensitive = toggle.checked;
-  });
-  const toggleText = document.createElement('span');
-  toggleText.textContent = 'Case-sensitive checking';
-  toggleRow.appendChild(toggle);
-  toggleRow.appendChild(toggleText);
-
-  container.appendChild(ansGroup);
-  container.appendChild(toggleRow);
 }
 
 function addBuilderQuestion() {
@@ -806,18 +695,6 @@ function saveQuiz() {
     }
   }
 
-  let maxAttempts = parseInt(document.getElementById('quiz-max-attempts').value, 10);
-  if (!Number.isFinite(maxAttempts) || maxAttempts < 1) maxAttempts = 1;
-  if (maxAttempts > 99) maxAttempts = 99;
-
-  const deadlineRaw = document.getElementById('quiz-deadline').value.trim();
-  const deadlineAt = deadlineRaw ? new Date(deadlineRaw).getTime() : null;
-  if (deadlineRaw && (deadlineAt == null || Number.isNaN(deadlineAt))) {
-    alert('Please enter a valid deadline, or clear the deadline field.');
-    document.getElementById('quiz-deadline').focus();
-    return;
-  }
-
   if (App.state.editingQuizId) {
     const idx = App.state.quizzes.findIndex(q => q.id === App.state.editingQuizId);
     if (idx !== -1) {
@@ -825,8 +702,6 @@ function saveQuiz() {
         ...App.state.quizzes[idx],
         title,
         description: desc,
-        maxAttempts,
-        deadlineAt: deadlineAt != null && !Number.isNaN(deadlineAt) ? deadlineAt : null,
         questions: JSON.parse(JSON.stringify(App.state.builderQuestions))
       };
     }
@@ -836,14 +711,11 @@ function saveQuiz() {
       title,
       description: desc,
       createdAt: Date.now(),
-      maxAttempts,
-      deadlineAt: deadlineAt != null && !Number.isNaN(deadlineAt) ? deadlineAt : null,
       questions: JSON.parse(JSON.stringify(App.state.builderQuestions))
     });
   }
 
   Storage.save();
-  App.state.editingQuizId = null;
   renderAdminDashboard();
   showView('admin-dashboard');
 }
@@ -868,46 +740,25 @@ function renderUserDashboard() {
 
   // Available quizzes
   if (App.state.quizzes.length === 0) {
-    listEl.innerHTML = '';
     listEl.style.display = 'none';
     emptyEl.style.display = 'block';
   } else {
     listEl.style.display = 'flex';
     emptyEl.style.display = 'none';
-    listEl.innerHTML = App.state.quizzes.map(quiz => {
-      const sid = profile && profile.studentId;
-      const attempts = sid ? getAttemptCount(quiz.id, sid) : 0;
-      const maxA = quiz.maxAttempts != null ? quiz.maxAttempts : 1;
-      const pastDue = isPastDeadline(quiz);
-      const canTake = sid ? studentCanTakeQuiz(quiz, sid) : false;
-
-      const metaBits = [`${quiz.questions.length} questions`, `${attempts}/${maxA} tr${maxA === 1 ? 'y' : 'ies'}`];
-      if (quiz.deadlineAt != null && Number.isFinite(quiz.deadlineAt)) {
-        metaBits.push(`Due ${formatDateTime(quiz.deadlineAt)}`);
-      }
-
-      let actionHtml = '';
-      if (!sid) {
-        actionHtml = '<span class="list-item-badge">Profile required</span>';
-      } else if (pastDue) {
-        actionHtml = '<span class="list-item-badge">Past deadline</span>';
-      } else if (canTake) {
-        actionHtml = `<button class="btn btn--primary btn--sm" data-action="take" data-quiz-id="${quiz.id}" type="button">Take Quiz</button>`;
-      } else {
-        actionHtml = '<span class="list-item-badge">No tries left</span>';
-      }
-
-      return `
+    listEl.innerHTML = App.state.quizzes.map(quiz => `
       <div class="list-item">
         <div class="list-item-info">
           <div class="list-item-title">${escapeHtml(quiz.title)}</div>
-          <div class="list-item-meta">${metaBits.join(' · ')}</div>
+          <div class="list-item-meta">${quiz.questions.length} questions</div>
         </div>
-        <div class="list-item-actions">${actionHtml}</div>
-      </div>`;
-    }).join('');
+        <div class="list-item-actions">
+          <button class="btn btn--primary btn--sm" data-quiz-id="${quiz.id}" type="button">Take Quiz</button>
+        </div>
+      </div>
+    `).join('');
 
-    listEl.querySelectorAll('button[data-action="take"]').forEach(btn => {
+    // Attach listeners programmatically instead of inline onclick
+    listEl.querySelectorAll('button[data-quiz-id]').forEach(btn => {
       btn.addEventListener('click', () => startQuiz(btn.dataset.quizId));
     });
   }
@@ -920,7 +771,6 @@ function renderUserDashboard() {
     return s.userName !== 'Admin'; // fallback
   });
   if (myResults.length === 0) {
-    resultsEl.innerHTML = '';
     resultsEl.style.display = 'none';
     resultsEmptyEl.style.display = 'block';
   } else {
@@ -944,40 +794,11 @@ function renderUserDashboard() {
   }
 }
 
-function buildTakerRadioChoice(container, questionId, optionText) {
-  const row = document.createElement('label');
-  row.className = 'tq-choice';
-  const radio = document.createElement('input');
-  radio.type = 'radio';
-  radio.name = 'q-' + questionId;
-  radio.value = optionText;
-  radio.required = true;
-  radio.addEventListener('change', () => {
-    row.parentElement.querySelectorAll('.tq-choice').forEach(c => c.classList.remove('is-selected'));
-    row.classList.add('is-selected');
-  });
-  row.appendChild(radio);
-  row.appendChild(document.createTextNode(optionText));
-  container.appendChild(row);
-}
+/* --- 10. QUIZ TAKER --- */
 
 function startQuiz(quizId) {
   const quiz = App.state.quizzes.find(q => q.id === quizId);
   if (!quiz) return;
-
-  const profile = App.state.studentProfile;
-  if (!profile || !profile.studentId) {
-    alert('Student profile is missing. Please sign in again.');
-    return;
-  }
-  if (!studentCanTakeQuiz(quiz, profile.studentId)) {
-    if (isPastDeadline(quiz)) {
-      alert('The deadline for this quiz has passed.');
-    } else {
-      alert(`You have used all ${quiz.maxAttempts} allowed attempt${quiz.maxAttempts !== 1 ? 's' : ''} for this quiz.`);
-    }
-    return;
-  }
 
   App.state.takingQuizId = quizId;
   document.getElementById('taker-quiz-title').textContent = quiz.title;
@@ -999,9 +820,39 @@ function startQuiz(quizId) {
     const choices = document.createElement('div');
     choices.className = 'tq-choices';
 
-    if (q.type === 'multiple-choice' || q.type === 'yes-no' || q.type === 'true-false') {
+    if (q.type === 'multiple-choice') {
       q.options.forEach(opt => {
-        buildTakerRadioChoice(choices, q.id, opt);
+        const row = document.createElement('label');
+        row.className = 'tq-choice';
+        const radio = document.createElement('input');
+        radio.type = 'radio';
+        radio.name = 'q-' + q.id;
+        radio.value = opt;
+        radio.required = true;
+        radio.addEventListener('change', () => {
+          row.parentElement.querySelectorAll('.tq-choice').forEach(c => c.classList.remove('is-selected'));
+          row.classList.add('is-selected');
+        });
+        row.appendChild(radio);
+        row.appendChild(document.createTextNode(opt));
+        choices.appendChild(row);
+      });
+    } else if (q.type === 'yes-no' || q.type === 'true-false') {
+      q.options.forEach(opt => {
+        const row = document.createElement('label');
+        row.className = 'tq-choice';
+        const radio = document.createElement('input');
+        radio.type = 'radio';
+        radio.name = 'q-' + q.id;
+        radio.value = opt;
+        radio.required = true;
+        radio.addEventListener('change', () => {
+          row.parentElement.querySelectorAll('.tq-choice').forEach(c => c.classList.remove('is-selected'));
+          row.classList.add('is-selected');
+        });
+        row.appendChild(radio);
+        row.appendChild(document.createTextNode(opt));
+        choices.appendChild(row);
       });
     } else if (q.type === 'typewritten') {
       const input = document.createElement('input');
@@ -1044,21 +895,15 @@ function trackTakerProgress() {
   updateTakerProgress(answered, quiz.questions.length);
 }
 
+document.getElementById('taker-questions').addEventListener('change', trackTakerProgress);
+document.getElementById('taker-questions').addEventListener('input', trackTakerProgress);
+
+/* --- 11. SCORING & RESULTS --- */
+
 function handleQuizSubmit(e) {
   e.preventDefault();
   const quiz = App.state.quizzes.find(q => q.id === App.state.takingQuizId);
   if (!quiz) return;
-
-  const profile = App.state.studentProfile;
-  if (!profile || !profile.studentId) {
-    alert('Student profile is missing. Please sign in again.');
-    return;
-  }
-  if (!studentCanTakeQuiz(quiz, profile.studentId)) {
-    alert('You can no longer submit this quiz (deadline or attempt limit).');
-    showView('user-dashboard');
-    return;
-  }
 
   const answers = [];
   let score = 0;
@@ -1096,6 +941,7 @@ function handleQuizSubmit(e) {
     });
   });
 
+  const profile = App.state.studentProfile || {};
   const submission = {
     id: generateId(),
     quizId: quiz.id,
@@ -1212,23 +1058,7 @@ function renderResults() {
   });
 }
 
-function resetStudentQuizAttempts(quizId, studentId) {
-  const quiz = App.state.quizzes.find(q => q.id === quizId);
-  const label = quiz ? `"${quiz.title}"` : 'this quiz';
-  if (
-    !confirm(
-      `Remove all submissions for this student on ${label}? They will be able to try again.`
-    )
-  ) {
-    return;
-  }
-  App.state.submissions = App.state.submissions.filter(
-    s => !(s.quizId === quizId && s.studentId === studentId)
-  );
-  Storage.save();
-  renderAdminDashboard();
-  viewStats(quizId);
-}
+/* --- 12. ADMIN STATISTICS --- */
 
 function viewStats(quizId) {
   const quiz = App.state.quizzes.find(q => q.id === quizId);
@@ -1265,34 +1095,23 @@ function viewStats(quizId) {
     <div class="stat-card"><div class="stat-value">${worst}</div><div class="stat-label">Lowest</div></div>
   `;
 
-  tbody.innerHTML = subs
-    .map(sub => {
-      const errors = sub.totalQuestions - sub.score;
-      const encSid = encodeURIComponent(sub.studentId || '');
-      return `
+  tbody.innerHTML = subs.map(sub => {
+    const errors = sub.totalQuestions - sub.score;
+    return `
       <tr>
         <td>${escapeHtml(sub.userName)}</td>
         <td>${escapeHtml(sub.studentId || '-')}</td>
         <td><strong>${sub.score}</strong> / ${sub.totalQuestions}</td>
         <td>${errors}</td>
         <td>${formatDate(sub.submittedAt)}</td>
-        <td>
-          <button class="btn btn--ghost btn--sm" type="button" data-action="reset-attempts" data-quiz-id="${quiz.id}" data-student-id="${encSid}">Reset tries</button>
-        </td>
-      </tr>`;
-    })
-    .join('');
-
-  tbody.querySelectorAll('button[data-action="reset-attempts"]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const qid = btn.dataset.quizId;
-      const sid = decodeURIComponent(btn.dataset.studentId || '');
-      resetStudentQuizAttempts(qid, sid);
-    });
-  });
+      </tr>
+    `;
+  }).join('');
 
   showView('admin-stats');
 }
+
+/* --- 13. QUIZ DELETION --- */
 
 function deleteQuiz(quizId) {
   const quiz = App.state.quizzes.find(q => q.id === quizId);
@@ -1304,3 +1123,7 @@ function deleteQuiz(quizId) {
   Storage.save();
   renderAdminDashboard();
 }
+
+/* --- 14. CLEANUP ---
+   No global pollution needed. All event listeners are attached
+   programmatically inside render functions for reliability. */

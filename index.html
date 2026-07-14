@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <!-- ----- DOCUMENT HEAD --------------------------------------------------
+       Every HTML page needs these three meta tags as a baseline.
+       - charset=UTF-8 ensures special characters (ñ, em-dash, etc.) render.
+       - viewport prevents mobile browsers from zooming out to 980px.
+       - The title shows in the browser tab and search results.
+       ------------------------------------------------------------------ -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quizly - Quiz Master</title>
+
+  <!-- ----- FAVICON (Inline SVG) --------------------------------------------
+       An inline data URI favicon means zero extra HTTP requests. The SVG
+       draws a burgundy rounded square with a white checkmark - matches the
+       brand accent and works at any resolution because it's vector.
+       ------------------------------------------------------------------ -->
+  <link rel="icon" type="image/svg+xml"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%237f1d1d'/%3E%3Cpath d='M28 52 L42 66 L72 36' stroke='%23f6f5f2' stroke-width='10' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+
+  <!-- ----- FONTS: Syne + Outfit (Google Fonts) -----------------------------
+       Two preconnect hints warm up the connection to Google's font CDN
+       before the browser even parses the stylesheet link - saves ~150ms.
+       display=swap means fallback text renders immediately, then the
+       custom font swaps in once downloaded. No invisible-text flash.
+
+       Syne is the display face (headings, brand title). Outfit is the
+       workhorse body font - geometric but readable at small sizes.
+       ------------------------------------------------------------------ -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Syne:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
+
+  <!-- ----- PHOSPHOR ICONS --------------------------------------------------
+       A lightweight icon library loaded via CDN. We use Phosphor instead
+       of emojis because emojis render differently on every OS - a checkmark
+       on Windows looks nothing like one on iOS. Phosphor gives us consistent
+       vector icons everywhere. The script tag injects a <ph-*> custom element
+       set that we reference as <i class="ph ph-icon-name"></i>.
+       ------------------------------------------------------------------ -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <!-- ----- TEXTURE OVERLAY --------------------------------------------------
+       A fixed-position SVG noise filter that sits above everything at 3.5%
+       opacity. It adds a faint paper-like grain to the background - subtle
+       enough that most people won't consciously notice it, but the surface
+       feels less sterile than flat #f6f5f2.
+       aria-hidden="true" keeps screen readers from announcing it.
+       ------------------------------------------------------------------ -->
+  <div class="noise-overlay" aria-hidden="true"></div>
+
+  <!-- ----- APP SHELL --------------------------------------------------------
+       This is the single container that holds every "page" of the
+       application. All eight views live inside #app as <section> elements.
+       JavaScript toggles a CSS class to show exactly one view at a time -
+       the browser never actually navigates. This is what makes it a
+       Single-Page Application (SPA): no page reloads, no flicker, instant
+       transitions.
+
+       Why a SPA instead of separate HTML files?
+       Because the activity covers JavaScript DOM manipulation and events.
+       A multi-page setup would need URL routing or server-side includes,
+       which are outside the Module 1-4 scope. Keeping everything in one
+       document keeps the architecture simple enough to explain line by line.
+       ------------------------------------------------------------------ -->
+  <div id="app">
+
+    <!-- =================================================================
+         VIEW 1: LANDING
+
+         The first thing anyone sees. Two role cards sit inside a Bento
+         grid - the hero block on the left (brand + tagline), the two
+         role-selector cards stacked on the right.
+
+         Key architectural decisions:
+         - <button> elements, not <a> or <div>. Buttons are the correct
+           semantic choice for "pick an option" interactions.
+         - data-role attributes carry "user" or "admin" into JS without
+           needing inline onclick. Cleaner separation of concerns.
+         - type="button" prevents accidental form submission if we ever
+           wrap these in a <form> later.
+         ================================================================= -->
+    <section id="view-landing" class="view view--active">
+      <div class="landing-content">
+        <div class="landing-bento">
+          <!-- Hero block: brand identity. The icon is a Phosphor check-list
+               sitting in a burgundy pill - same accent color as buttons and
+               progress bars, so the whole UI feels like one system. -->
+          <div class="bento-hero">
+            <i class="ph ph-list-checks brand-icon"></i>
+            <h1 class="brand-title">Quizly</h1>
+            <p class="brand-subtitle">A premium platform to create, share, and take quizzes with seamless simplicity.</p>
+          </div>
+          <!-- Role cards: two stacked buttons that set App.state.role.
+               The nested .role-card-shell → .role-card-core structure is
+               what gives each card its layered glassmorphism depth - an
+               outer translucent shell with an inner opaque card. -->
+          <div class="bento-roles">
+            <button class="role-card" data-role="user" type="button">
+              <div class="role-card-shell">
+                <div class="role-card-core">
+                  <i class="ph ph-student role-icon"></i>
+                  <span class="role-label">I'm a Student</span>
+                  <span class="role-hint">Take quizzes and view your scores</span>
+                </div>
+              </div>
+            </button>
+            <button class="role-card" data-role="admin" type="button">
+              <div class="role-card-shell">
+                <div class="role-card-core">
+                  <i class="ph ph-chalkboard-teacher role-icon"></i>
+                  <span class="role-label">I'm an Instructor</span>
+                  <span class="role-hint">Create quizzes and track results</span>
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================
+         VIEW 2: AUTHENTICATION
+
+         A centered card with a single form. Students see extra fields
+         (name + student number); instructors only see the code input.
+
+         Key details worth defending in class:
+         - novalidate on the <form> disables the browser's built-in
+           validation popups. We replace them with our own error messages
+           so they match the design system and use aria-live for screen
+           readers.
+         - inputmode="numeric" tells mobile keyboards to show a number
+           pad instead of a full QWERTY layout - small UX win, zero cost.
+         - The student-fields div starts with display:none and JS toggles
+           it based on App.state.role. The fields stay in the DOM (not
+           conditionally rendered) so any autofill state persists if the
+           user switches roles and comes back.
+         ================================================================= -->
+    <section id="view-auth" class="view">
+      <div class="auth-wrap">
+        <button class="btn-back" type="button" aria-label="Go back">&#8592; Back</button>
+        <h2 class="auth-title">Enter Class Code</h2>
+        <p class="auth-hint" id="auth-hint">Ask your instructor for the class code.</p>
+        <form id="auth-form" class="auth-form" novalidate>
+          <div class="field-group">
+            <label for="class-code" class="field-label">Class Code</label>
+            <input type="text" id="class-code" class="field-input" placeholder="e.g. 362026" autocomplete="off"
+              inputmode="numeric" required>
+            <span class="field-error" id="auth-error" aria-live="polite"></span>
+          </div>
+
+          <!-- Student identity fields - revealed by JS only when role=user.
+               Style is set inline (display:none) so there's no flash of
+               content before the JS runs. The JS toggles to display:flex. -->
+          <div class="student-fields" id="student-fields" style="display:none;">
+            <div class="field-row">
+              <div class="field-group">
+                <label for="student-first" class="field-label">First Name</label>
+                <input type="text" id="student-first" class="field-input" placeholder="First name" autocomplete="off">
+              </div>
+              <div class="field-group">
+                <label for="student-last" class="field-label">Last Name</label>
+                <input type="text" id="student-last" class="field-input" placeholder="Last name" autocomplete="off">
+              </div>
+            </div>
+            <div class="field-group">
+              <label for="student-id" class="field-label">Student Number</label>
+              <input type="text" id="student-id" class="field-input" placeholder="" autocomplete="off">
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn--primary btn--full">Continue</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- =================================================================
+         VIEW 3: ADMIN DASHBOARD
+
+         After signing in as Instructor, this is home base. It shows:
+         1. A stats row (total quizzes, submissions, avg score) - JS-filled.
+         2. A scrollable list of every quiz with Edit / Stats / Delete.
+         3. An empty-state fallback when no quizzes exist yet.
+
+         The header is sticky so it stays visible while scrolling through
+         a long quiz list. The role badge ("Instructor") is a visual
+         reminder of which identity you're signed in as.
+         ================================================================= -->
+    <section id="view-admin-dashboard" class="view">
+      <header class="app-header">
+        <div class="header-brand">
+          <i class="ph ph-list-checks header-icon"></i>
+          <span class="header-title">Quizly</span>
+        </div>
+        <div class="header-actions">
+          <span class="header-role">Instructor</span>
+          <button class="btn btn--ghost btn--sm" id="admin-logout" type="button">Sign Out</button>
+        </div>
+      </header>
+      <main class="app-main">
+        <div class="dashboard-header">
+          <h2 class="dashboard-title">Your Quizzes</h2>
+          <button class="btn btn--primary" id="btn-create-quiz" type="button">+ New Quiz</button>
+        </div>
+        <!-- Stats cards: total quizzes, submissions, average score.
+             renderAdminDashboard() in script.js builds these from
+             App.state.quizzes and App.state.submissions. -->
+        <div class="stats-row" id="admin-stats-row">
+          <!-- Stats injected by JS -->
+        </div>
+        <!-- Quiz list: each row gets Edit / Stats / Delete buttons
+             attached via addEventListener after innerHTML render. -->
+        <div class="list-container" id="admin-quiz-list">
+          <!-- Quiz list injected by JS -->
+        </div>
+        <!-- Empty state: shown when App.state.quizzes.length === 0.
+             JS toggles this and hides the list container. -->
+        <div class="empty-state" id="admin-empty" style="display:none;">
+          <p>No quizzes yet.</p>
+          <p class="empty-hint">Click "New Quiz" to create your first one.</p>
+        </div>
+      </main>
+    </section>
+
+    <!-- =================================================================
+         VIEW 4: QUIZ BUILDER
+
+         This is the technical centerpiece of the activity - the view
+         that satisfies the "use document.createElement" requirement.
+
+         Architecture:
+         - Quiz metadata at the top (title, description, max attempts,
+           optional deadline).
+         - A dynamic questions list where every question card is built
+           through the DOM API: document.createElement('div'), .appendChild(),
+           addEventListener(). No innerHTML for the question cards.
+         - The +Add Question button pushes a blank question object into
+           App.state.builderQuestions, then re-renders.
+         - Save serializes the builderQuestions into App.state.quizzes
+           and writes to localStorage.
+
+         Why no <form> wrapper? The save action is a JS button, not a
+         traditional form submit. We validate manually in saveQuiz()
+         because the validation rules depend on question type (multiple
+         choice needs 2+ options; typewritten needs a non-empty answer
+         etc.) - too complex for HTML5 constraint validation alone.
+         ================================================================= -->
+    <section id="view-quiz-builder" class="view">
+      <header class="app-header">
+        <div class="header-brand">
+          <i class="ph ph-list-checks header-icon"></i>
+          <span class="header-title">Quizly</span>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn--ghost btn--sm" id="builder-cancel" type="button">Cancel</button>
+        </div>
+      </header>
+      <main class="app-main app-main--form">
+        <div class="builder-card">
+          <h2 class="builder-title" id="builder-title-text">Create Quiz</h2>
+          <!-- Quiz metadata fields. title is required; description is optional.
+               These are plain inputs - no document.createElement needed here
+               because the fields exist once and don't multiply. -->
+          <div class="field-group">
+            <label for="quiz-title" class="field-label">Quiz Title</label>
+            <input type="text" id="quiz-title" class="field-input" placeholder="e.g. JavaScript Basics" required>
+          </div>
+          <div class="field-group">
+            <label for="quiz-desc" class="field-label">Description <span class="optional">(optional)</span></label>
+            <textarea id="quiz-desc" class="field-input field-input--area" rows="2"
+              placeholder="Briefly describe what this quiz covers."></textarea>
+          </div>
+          <!-- Attempt limit + deadline: two related settings that share a row.
+               maxAttempts defaults to 1 (single attempt). The deadline uses
+               datetime-local, the browser's native date+time picker. -->
+          <div class="field-row builder-settings-row">
+            <div class="field-group">
+              <label for="quiz-max-attempts" class="field-label">Max tries per student</label>
+              <input type="number" id="quiz-max-attempts" class="field-input" min="1" max="99" value="1" required>
+            </div>
+            <div class="field-group">
+              <label for="quiz-deadline" class="field-label">Deadline <span class="optional">(optional)</span></label>
+              <input type="datetime-local" id="quiz-deadline" class="field-input">
+            </div>
+          </div>
+          <!-- Questions area: a header with live count, the dynamic container,
+               an Add button, and a final Save. The questions-container starts
+               empty and is populated entirely by createQuestionCard(). -->
+          <div class="questions-header">
+            <h3 class="questions-heading">Questions</h3>
+            <span class="questions-count" id="question-count">0 questions</span>
+          </div>
+          <div class="questions-list" id="questions-container">
+            <!-- Questions injected via document.createElement -->
+          </div>
+          <button class="btn btn--secondary btn--full" id="btn-add-question" type="button">+ Add Question</button>
+          <div class="builder-actions">
+            <button class="btn btn--primary btn--full" id="btn-save-quiz" type="button">Save Quiz</button>
+          </div>
+        </div>
+      </main>
+    </section>
+
+    <!-- =================================================================
+         VIEW 5: USER DASHBOARD
+
+         Student home screen. Two sections separated by a thin rule:
+         1. Available Quizzes - each with a Take Quiz button, attempt
+            count, and deadline info. JS also disables the button if
+            attempts are exhausted or the deadline passed.
+         2. Your Results - a chronological list of past submissions
+            filtered to this specific student (matched by studentId).
+
+         The welcome message (#user-welcome) is hidden until a student
+         profile exists - JS populates it with the student's first name
+         and ID number from App.state.studentProfile.
+         ================================================================= -->
+    <section id="view-user-dashboard" class="view">
+      <header class="app-header">
+        <div class="header-brand">
+          <i class="ph ph-list-checks header-icon"></i>
+          <span class="header-title">Quizly</span>
+        </div>
+        <div class="header-actions">
+          <span class="header-role">Student</span>
+          <button class="btn btn--ghost btn--sm" id="user-logout" type="button">Sign Out</button>
+        </div>
+      </header>
+      <main class="app-main">
+        <p class="user-welcome" id="user-welcome" style="display:none;"></p>
+        <div class="dashboard-header">
+          <h2 class="dashboard-title">Available Quizzes</h2>
+        </div>
+        <div class="list-container" id="user-quiz-list">
+          <!-- Available quizzes injected by JS -->
+        </div>
+        <div class="empty-state" id="user-empty" style="display:none;">
+          <p>No quizzes available right now.</p>
+          <p class="empty-hint">Check back later or ask your instructor.</p>
+        </div>
+        <div class="section-divider"></div>
+        <div class="dashboard-header">
+          <h2 class="dashboard-title">Your Results</h2>
+        </div>
+        <div class="list-container" id="user-results-list">
+          <!-- Past results injected by JS -->
+        </div>
+        <div class="empty-state" id="user-results-empty" style="display:none;">
+          <p>You haven't taken any quizzes yet.</p>
+        </div>
+      </main>
+    </section>
+
+    <!-- =================================================================
+         VIEW 6: QUIZ TAKER
+
+         Where students actually answer questions. The header is NOT
+         sticky here (CSS overrides it to position:relative) because a
+         sticky header can intercept click events on the first few
+         radio choices - a layout bug we caught during testing.
+
+         The progress bar is a simple CSS width-percentage trick:
+         trackTakerProgress() counts answered questions, divides by
+         total, and sets #taker-progress-fill.style.width.
+
+         Each question is injected by startQuiz() using the same
+         document.createElement pattern as the builder - radios for
+         multiple choice/yes-no/true-false, text input for typewritten.
+         The form uses novalidate because we want the browser to let
+         the user click Submit even if some questions are unanswered
+         (we count unanswered as wrong, not blocked).
+         ================================================================= -->
+    <section id="view-quiz-taker" class="view">
+      <header class="app-header">
+        <div class="header-brand">
+          <i class="ph ph-list-checks header-icon"></i>
+          <span class="header-title">Quizly</span>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn--ghost btn--sm" id="taker-exit" type="button">Exit</button>
+        </div>
+      </header>
+      <main class="app-main app-main--form">
+        <div class="taker-card">
+          <div class="taker-meta">
+            <h2 class="taker-title" id="taker-quiz-title">Quiz Title</h2>
+            <p class="taker-desc" id="taker-quiz-desc"></p>
+            <!-- Live progress: a horizontal track filled from the left.
+                 The fill width is a percentage set inline by JS.
+                 The transition on width gives it that smooth feel. -->
+            <div class="taker-progress">
+              <div class="progress-track">
+                <div class="progress-fill" id="taker-progress-fill" style="width:0%"></div>
+              </div>
+              <span class="progress-text" id="taker-progress-text">0 / 0</span>
+            </div>
+          </div>
+          <form id="quiz-form" class="quiz-form" novalidate>
+            <div id="taker-questions">
+              <!-- Questions injected by JS -->
+            </div>
+            <div class="taker-actions">
+              <button type="submit" class="btn btn--primary btn--full">Submit Quiz</button>
+            </div>
+          </form>
+        </div>
+      </main>
+    </section>
+
+    <!-- =================================================================
+         VIEW 7: RESULTS
+
+         Post-submission score card. Four zones:
+         1. The score ring - a CSS circle with the number of correct
+            answers centered inside. Pure CSS (border-radius:50% +
+            thick accent border), no SVG needed.
+         2. Stats grid - Total / Errors / Accuracy% / Correct.
+         3. Question breakdown - collapsible cards showing your answer
+            vs. the correct answer, plus the explanation. Wrong answers
+            get a red left accent; correct ones get green.
+         4. A Done button that returns to the user dashboard.
+
+         Everything is built by renderResults() using document.createElement
+         for the breakdown cards. The stat cards use innerHTML because
+         they're simple text replacements.
+         ================================================================= -->
+    <section id="view-results" class="view">
+      <header class="app-header">
+        <div class="header-brand">
+          <i class="ph ph-list-checks header-icon"></i>
+          <span class="header-title">Quizly</span>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn--ghost btn--sm" id="results-done" type="button">Done</button>
+        </div>
+      </header>
+      <main class="app-main app-main--form">
+        <div class="results-card">
+          <h2 class="results-title">Quiz Results</h2>
+          <!-- The score ring: a 180px circle with an 8px accent border.
+               #result-score is the big number; the label underneath
+               says "correct". Both are centered via flexbox. -->
+          <div class="score-ring">
+            <div class="score-value" id="result-score">0</div>
+            <div class="score-label">correct</div>
+          </div>
+          <!-- 2×2 grid of stat cards: Total questions, Errors, Accuracy%, Correct.
+               JS computes these from the submission object. -->
+          <div class="result-stats" id="result-stats">
+            <!-- Stats injected by JS -->
+          </div>
+          <div class="breakdown-header">
+            <h3 class="breakdown-title">Question Breakdown</h3>
+          </div>
+          <!-- Each breakdown item is a collapsible card built via
+               document.createElement in renderResults(). Cards animate
+               in with staggered delays (cardReveal keyframes). -->
+          <div class="breakdown-list" id="result-breakdown">
+            <!-- Breakdown items injected by JS -->
+          </div>
+        </div>
+      </main>
+    </section>
+
+    <!-- =================================================================
+         VIEW 8: ADMIN STATISTICS
+
+         Per-quiz submission breakdown for the instructor. Features:
+         - Summary row: total submissions, average, highest, lowest.
+         - A semantic <table> (not divs) because this is genuinely
+           tabular data - rows of student records with columns for
+           name, ID, score, errors, date.
+         - Each row has a "Reset tries" button that deletes the
+           student's submissions for this quiz so they can retake it.
+           (The button asks for confirmation first.)
+         - Empty state fallback when nobody has taken the quiz yet.
+
+         The table uses <thead> and <tbody> for proper semantics.
+         Horizontal scroll is enabled via overflow-x:auto on the
+         wrapper so wide tables work on mobile.
+         ================================================================= -->
+    <section id="view-admin-stats" class="view">
+      <header class="app-header">
+        <div class="header-brand">
+          <i class="ph ph-list-checks header-icon"></i>
+          <span class="header-title">Quizly</span>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn--ghost btn--sm" id="stats-back" type="button">Back</button>
+        </div>
+      </header>
+      <main class="app-main">
+        <div class="dashboard-header">
+          <h2 class="dashboard-title" id="stats-quiz-title">Statistics</h2>
+        </div>
+        <!-- Summary stat cards: same .stats-row grid pattern as the admin
+             dashboard, but computed per-quiz instead of globally. -->
+        <div class="stats-summary" id="stats-summary">
+          <!-- Summary injected by JS -->
+        </div>
+        <!-- Scrollable table wrapper so the table doesn't break on narrow
+             screens. The table itself uses standard <thead>/<tbody> with
+             border-collapse for clean row lines. -->
+        <div class="table-wrap">
+          <table class="data-table" id="stats-table">
+            <thead>
+              <tr>
+                <th>Student Name</th>
+                <th>Student Number</th>
+                <th>Score</th>
+                <th>Errors</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="stats-table-body">
+              <!-- Rows injected by JS -->
+            </tbody>
+          </table>
+        </div>
+        <div class="empty-state" id="stats-empty" style="display:none;">
+          <p>No submissions yet for this quiz.</p>
+        </div>
+      </main>
+    </section>
+
+  </div>
+  <!-- end #app -->
+
+  <!-- ----- SCRIPT LOADING --------------------------------------------------
+       Placed at the end of <body> so the entire DOM tree is parsed before
+       the script runs. No need for DOMContentLoaded inside the script if
+       we put the tag here, but we keep DOMContentLoaded anyway as a
+       defensive habit - it costs nothing and guards against edge cases
+       (like the script being moved to <head> later).
+       ------------------------------------------------------------------ -->
+  <script src="script.js"></script>
+</body>
+
+</html>
